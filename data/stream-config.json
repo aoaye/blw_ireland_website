@@ -1,0 +1,6 @@
+{
+  "rtmpServerUrl": "rtmp://vcpingest-sf01-altnetro.internetmultimediaonline.org/vcp",
+  "rtmpStreamKey": "nerzoi",
+  "streamType": "rtmp",
+  "isLive": false
+}

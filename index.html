@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BLW Ireland Zone - Home</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="index.html" class="logo">
+                <img src="Assets/blw_ire_logo.png" alt="BLW Ireland Zone Logo" class="logo-img">
+                <h1>BLW Ireland Zone</h1>
+            </a>
+            <ul class="nav-menu">
+                <li><a href="index.html" class="active">Home</a></li>
+                <li><a href="livestream.html">Live TV</a></li>
+                <li><a href="about.html">About</a></li>
+            </ul>
+            <div class="hamburger">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+        </div>
+    </nav>
+
+    <main>
+        <section class="hero">
+            <div class="hero-content">
+                <h2>Welcome to BLW Ireland Zone</h2>
+                <p>Making An Impact; In universities across the nation and beyond...</p>
+                <a href="livestream.html" class="cta-button">Watch Live</a>
+            </div>
+        </section>
+
+        <section class="features">
+            <div class="container">
+                <h2>Join Us</h2>
+                <div class="feature-grid">
+                    <div class="feature-card">
+                        <div class="feature-icon">⛪</div>
+                        <h3>Sunday Services</h3>
+                        <p>Join us every Sunday at 2:00 PM for worship, teaching, and fellowship.</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">🤝</div>
+                        <h3>Fellowship Meetings</h3>
+                        <p>Connect with others through regular fellowship meetings and grow together in faith.</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">🙏</div>
+                        <h3>Community</h3>
+                        <p>Be part of a vibrant community of believers making an impact in universities and beyond.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="instagram-section">
+            <div class="container">
+                <h2>Highlight of the Week</h2>
+                <div class="instagram-container">
+                    <div class="instagram-feed" id="instagram-feed">
+                        <div class="instagram-loading">
+                            <p>Loading content...</p>
+                        </div>
+                    </div>
+                    <div class="instagram-link">
+                        <a href="https://www.instagram.com/blwirelandzone" target="_blank" rel="noopener noreferrer" class="instagram-button">
+                            <span>📷</span> Follow us on Instagram
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="upcoming-events">
+            <div class="container">
+                <h2>Upcoming Events</h2>
+                <div class="events-list">
+                    <!-- Events will be loaded from API -->
+                    <div class="event-card">
+                        <div class="event-date">
+                            <span class="day">Sun</span>
+                            <span class="time">2:00 PM</span>
+                        </div>
+                        <div class="event-details">
+                            <h3>Sunday Service</h3>
+                            <p>Join us every Sunday for worship and the word</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>&copy; 2024 BLW Ireland Zone. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <script src="instagram-feed.js"></script>
+    <script src="frontend-api.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
+

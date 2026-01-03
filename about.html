@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>About Us - BLW Ireland Zone</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="index.html" class="logo">
+                <img src="Assets/blw_ire_logo.png" alt="BLW Ireland Zone Logo" class="logo-img">
+                <h1>BLW Ireland Zone</h1>
+            </a>
+            <ul class="nav-menu">
+                <li><a href="index.html">Home</a></li>
+                <li><a href="livestream.html">Live TV</a></li>
+                <li><a href="about.html" class="active">About</a></li>
+            </ul>
+            <div class="hamburger">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+        </div>
+    </nav>
+
+    <main>
+        <section class="about-hero">
+            <div class="container">
+                <h2>About BLW Ireland Zone</h2>
+                <p class="subtitle">Making An Impact; In universities across the nation and beyond...</p>
+            </div>
+        </section>
+
+        <section class="about-content">
+            <div class="container">
+                <div class="about-section">
+                    <h3>Our Mission</h3>
+                    <p>BLW Ireland Zone is dedicated to building lives, transforming communities, and spreading hope throughout Ireland. We are committed to sharing the love of Christ and making a positive impact in the lives of individuals and families.</p>
+                </div>
+
+                <div class="about-section">
+                    <h3>Our Vision</h3>
+                    <p>To be a beacon of light and hope in Ireland, creating a community where people can grow in faith, find purpose, and experience the transformative power of God's love. We envision a church that reaches beyond its walls to impact the nation.</p>
+                </div>
+
+                <div class="about-section">
+                    <h3>What We Believe</h3>
+                    <ul class="beliefs-list">
+                        <li>We believe in the power of God's word to transform lives</li>
+                        <li>We believe in the importance of community and fellowship</li>
+                        <li>We believe in serving others with love and compassion</li>
+                        <li>We believe in the power of prayer and worship</li>
+                        <li>We believe in building strong families and relationships</li>
+                    </ul>
+                </div>
+
+                <div class="about-section">
+                    <h3>Zone Structure</h3>
+                    <p>BLW Ireland Zone is organized into groups and colleges, each serving our community in unique ways.</p>
+                    <div class="zone-structure">
+                        <div class="zone-dropdown">
+                            <button class="zone-header" onclick="toggleDropdown(this)">
+                                <span class="zone-title">BLW Ireland Zone</span>
+                                <span class="dropdown-icon">▼</span>
+                            </button>
+                            <div class="zone-content">
+                                <!-- Group A -->
+                                <div class="group-dropdown">
+                                    <button class="group-header" onclick="toggleDropdown(this)">
+                                        <span class="group-title">Group A - Mighty Army</span>
+                                        <span class="dropdown-icon">▼</span>
+                                    </button>
+                                    <div class="group-content">
+                                        <div class="colleges-list">
+                                            <p class="college-placeholder">Colleges will be listed here</p>
+                                            <!-- Colleges will be added here dynamically -->
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Group B -->
+                                <div class="group-dropdown">
+                                    <button class="group-header" onclick="toggleDropdown(this)">
+                                        <span class="group-title">Group B - LimitBreakers</span>
+                                        <span class="dropdown-icon">▼</span>
+                                    </button>
+                                    <div class="group-content">
+                                        <div class="colleges-list">
+                                            <p class="college-placeholder">Colleges will be listed here</p>
+                                            <!-- Colleges will be added here dynamically -->
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Group C -->
+                                <div class="group-dropdown">
+                                    <button class="group-header" onclick="toggleDropdown(this)">
+                                        <span class="group-title">Group C - Boundless Love</span>
+                                        <span class="dropdown-icon">▼</span>
+                                    </button>
+                                    <div class="group-content">
+                                        <div class="colleges-list">
+                                            <p class="college-placeholder">Colleges will be listed here</p>
+                                            <!-- Colleges will be added here dynamically -->
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="about-section">
+                    <h3>Our Services</h3>
+                    <div class="services-grid">
+                        <div class="service-item">
+                            <h4>Sunday Services</h4>
+                            <p>Join us every Sunday at 2:00 PM for worship, teaching, and fellowship.</p>
+                        </div>
+                        <div class="service-item">
+                            <h4>Midweek Services</h4>
+                            <p>Wednesday evenings at 7:00 PM for Bible study and prayer.</p>
+                        </div>
+                        <div class="service-item">
+                            <h4>Online Services</h4>
+                            <p>Can't make it in person? Join us online through our live TV broadcast.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="about-section">
+                    <h3>Get in Touch</h3>
+                    <p>We'd love to hear from you! Whether you have questions, need prayer, or want to get involved, we're here for you.</p>
+                    <div class="contact-info">
+                        <p><strong>Email:</strong> info@blwirelandzone.com</p>
+                        <p><strong>Phone:</strong> +353 (0) XX XXX XXXX</p>
+                        <p><strong>Address:</strong> [Your Address Here], Ireland</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>&copy; 2024 BLW Ireland Zone. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <script src="zone-data.js"></script>
+    <script src="frontend-api.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
+

@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Portal - BLW Ireland Zone</title>
+    <link rel="stylesheet" href="admin.css">
+</head>
+<body>
+    <div id="login-screen" class="login-container">
+        <div class="login-box">
+            <h1>BLW Ireland Zone</h1>
+            <h2>Admin Portal</h2>
+            <form id="login-form">
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" required autofocus>
+                </div>
+                <button type="submit" class="btn btn-primary">Login</button>
+                <div id="login-error" class="error-message"></div>
+            </form>
+        </div>
+    </div>
+
+    <div id="admin-dashboard" class="dashboard" style="display: none;">
+        <nav class="admin-nav">
+            <div class="nav-header">
+                <h1>BLW Ireland Zone Admin</h1>
+                <button id="logout-btn" class="btn btn-secondary">Logout</button>
+            </div>
+            <ul class="nav-menu">
+                <li><a href="#" data-section="dashboard" class="nav-link active">Dashboard</a></li>
+                <li><a href="#" data-section="livestream" class="nav-link">Live TV</a></li>
+                <li><a href="#" data-section="instagram" class="nav-link">Instagram Feed</a></li>
+                <li><a href="#" data-section="events" class="nav-link">Events Calendar</a></li>
+                <li><a href="#" data-section="zone-structure" class="nav-link">Zone Structure</a></li>
+                <li><a href="#" data-section="images" class="nav-link">Images</a></li>
+                <li><a href="#" data-section="settings" class="nav-link">Settings</a></li>
+            </ul>
+        </nav>
+
+        <main class="admin-content">
+            <!-- Dashboard Section -->
+            <section id="section-dashboard" class="content-section active">
+                <h2>Dashboard</h2>
+                <div class="dashboard-stats">
+                    <div class="stat-card">
+                        <h3>Upcoming Events</h3>
+                        <p id="events-count">0</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Live TV Status</h3>
+                        <p id="stream-status">Offline</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Instagram Feed</h3>
+                        <p id="instagram-status">Not Configured</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Live TV Section -->
+            <section id="section-livestream" class="content-section">
+                <h2>Live TV Management</h2>
+                <div class="form-card">
+                    <form id="stream-form">
+                        <div class="form-group">
+                            <label for="rtmp-server-url">RTMP Server URL</label>
+                            <input type="text" id="rtmp-server-url" placeholder="rtmp://your-server.com:1935/live">
+                            <small>Server URL without the stream key (e.g., rtmp://server.com:1935/live)</small>
+                        </div>
+                        <div class="form-group">
+                            <label for="rtmp-stream-key">Stream Key</label>
+                            <input type="password" id="rtmp-stream-key" placeholder="your-stream-key">
+                            <small>Your RTMP stream key (kept secure and separate)</small>
+                        </div>
+                        <div class="form-group">
+                            <label for="stream-type">Stream Type</label>
+                            <select id="stream-type">
+                                <option value="rtmp">RTMP</option>
+                                <option value="hls">HLS</option>
+                                <option value="flv">FLV</option>
+                            </select>
+                            <small>For HLS/FLV, enter the full playback URL (server URL + stream key will be combined for RTMP)</small>
+                        </div>
+                        <div class="form-group">
+                            <label class="toggle-label">
+                                <span>Stream is currently live</span>
+                                <div class="toggle-wrapper">
+                                    <input type="checkbox" id="stream-live" class="toggle-switch">
+                                    <span class="toggle-slider"></span>
+                                </div>
+                            </label>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Save Stream Configuration</button>
+                    </form>
+                </div>
+            </section>
+
+            <!-- Instagram Section -->
+            <section id="section-instagram" class="content-section">
+                <h2>Instagram Feed Management</h2>
+                <div class="form-card">
+                    <form id="instagram-form">
+                        <div class="form-group">
+                            <label class="toggle-label">
+                                <span>Automatically fetch latest post</span>
+                                <div class="toggle-wrapper">
+                                    <input type="checkbox" id="instagram-auto-fetch" class="toggle-switch">
+                                    <span class="toggle-slider"></span>
+                                </div>
+                            </label>
+                        </div>
+                        <div class="form-group">
+                            <label for="instagram-manual-url">Manual Post URL (if not using auto-fetch)</label>
+                            <input type="text" id="instagram-manual-url" placeholder="https://www.instagram.com/p/POST_ID/">
+                        </div>
+                        <div class="form-group">
+                            <label for="instagram-access-token">Instagram Access Token (for auto-fetch)</label>
+                            <input type="password" id="instagram-access-token" placeholder="Optional: For API access">
+                        </div>
+                        <div class="form-group">
+                            <label for="instagram-user-id">Instagram User ID (for auto-fetch)</label>
+                            <input type="text" id="instagram-user-id" placeholder="Optional: For API access">
+                        </div>
+                        <button type="submit" class="btn btn-primary">Save Instagram Configuration</button>
+                    </form>
+                </div>
+            </section>
+
+            <!-- Events Section -->
+            <section id="section-events" class="content-section">
+                <h2>Events Calendar</h2>
+                <button id="add-event-btn" class="btn btn-primary">Add New Event</button>
+                <div id="events-list" class="events-list"></div>
+            </section>
+
+            <!-- Zone Structure Section -->
+            <section id="section-zone-structure" class="content-section">
+                <h2>Zone Structure Management</h2>
+                <div id="zone-groups" class="zone-groups"></div>
+            </section>
+
+            <!-- Images Section -->
+            <section id="section-images" class="content-section">
+                <h2>Image Management</h2>
+                <div class="image-upload-section">
+                    <h3>Upload Images</h3>
+                    <form id="image-upload-form" enctype="multipart/form-data">
+                        <div class="form-group">
+                            <label for="image-file">Select Image</label>
+                            <input type="file" id="image-file" accept="image/*" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="image-purpose">Image Purpose</label>
+                            <select id="image-purpose">
+                                <option value="hero-background">Hero Background</option>
+                                <option value="group-a">Group A Image</option>
+                                <option value="group-b">Group B Image</option>
+                                <option value="group-c">Group C Image</option>
+                                <option value="other">Other</option>
+                            </select>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Upload Image</button>
+                    </form>
+                </div>
+                <div id="uploaded-images" class="uploaded-images"></div>
+            </section>
+
+            <!-- Settings Section -->
+            <section id="section-settings" class="content-section">
+                <h2>Settings</h2>
+                <div class="form-card">
+                    <h3>Site Configuration</h3>
+                    <form id="site-config-form">
+                        <div class="form-group">
+                            <label for="site-title">Site Title</label>
+                            <input type="text" id="site-title">
+                        </div>
+                        <div class="form-group">
+                            <label for="site-tagline">Tagline</label>
+                            <textarea id="site-tagline" rows="2"></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Save Site Configuration</button>
+                    </form>
+                </div>
+                <div class="form-card">
+                    <h3>Change Admin Password</h3>
+                    <form id="password-form">
+                        <div class="form-group">
+                            <label for="new-password">New Password</label>
+                            <input type="password" id="new-password" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="confirm-password">Confirm Password</label>
+                            <input type="password" id="confirm-password" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Change Password</button>
+                    </form>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Event Modal -->
+    <div id="event-modal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2 id="modal-title">Add Event</h2>
+            <form id="event-form">
+                <input type="hidden" id="event-id">
+                <div class="form-group">
+                    <label for="event-title">Event Title</label>
+                    <input type="text" id="event-title" required>
+                </div>
+                <div class="form-group">
+                    <label for="event-description">Description</label>
+                    <textarea id="event-description" rows="3"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="event-date">Date</label>
+                    <input type="date" id="event-date" required>
+                </div>
+                <div class="form-group">
+                    <label for="event-time">Time</label>
+                    <input type="time" id="event-time" required>
+                </div>
+                <div class="form-group">
+                    <label for="event-day">Day of Week</label>
+                    <input type="text" id="event-day" placeholder="e.g., Sun, Mon, Wed">
+                </div>
+                <button type="submit" class="btn btn-primary">Save Event</button>
+                <button type="button" class="btn btn-secondary" id="cancel-event">Cancel</button>
+            </form>
+        </div>
+    </div>
+
+    <script src="admin.js"></script>
+</body>
+</html>
+
