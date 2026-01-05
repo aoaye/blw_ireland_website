@@ -1,0 +1,12 @@
+/* Webfont: Boulia-Demo */@font-face {
+    font-family: 'BouliaDemo';
+    src: url('Boulia-Demo.eot'); /* IE9 Compat Modes */
+    src: url('Boulia-Demo.eot?#iefix') format('embedded-opentype'), /* IE6-IE8 */
+         url('Boulia-Demo.woff') format('woff'), /* Modern Browsers */
+         url('Boulia-Demo.ttf') format('truetype'), /* Safari, Android, iOS */
+         url('Boulia-Demo.svg#Boulia-Demo') format('svg'); /* Legacy iOS */
+    font-style: normal;
+    font-weight: normal;
+    text-rendering: optimizeLegibility;
+}
+
