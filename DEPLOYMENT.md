@@ -187,9 +187,11 @@ cookie: {
 Create a `.env` file (don't commit to Git):
 ```env
 NODE_ENV=production
-PORT=3000
+PORT=8080
 SESSION_SECRET=your-strong-random-secret-here
 ```
+
+**Note:** Most hosting platforms set `PORT` automatically, so you may not need to set this.
 
 ### 3. Update API URLs
 
@@ -236,8 +238,10 @@ coverage/
 
 2. **Update `admin-server.js`** for production:
 ```javascript
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 8080;
 ```
+
+**Note:** The code already uses `process.env.PORT || 8080`, so hosting platforms will automatically set the port.
 
 3. **Commit and push to GitHub**
 

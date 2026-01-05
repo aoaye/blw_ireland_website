@@ -10,7 +10,7 @@
 - `server.js` - Simple HTTP server for port 8000
 - `start-server.bat` - Windows script for server.js
 - `start-server.sh` - Linux/Mac script for server.js
-- **Reason**: `admin-server.js` already serves static files and can handle the frontend website. The frontend can be accessed at `http://localhost:3000/` while admin is at `http://localhost:3000/admin`.
+- **Reason**: `admin-server.js` already serves static files and can handle the frontend website. The frontend can be accessed at `http://localhost:8080/` while admin is at `http://localhost:8080/admin`.
 
 ### 3. Outdated Documentation
 - `INSTAGRAM_SETUP.md` - Outdated guide for manually editing instagram-feed.js
@@ -42,9 +42,9 @@
 ## Recommendations
 
 1. **Single Server Setup**: Use `admin-server.js` for everything:
-   - Frontend website: `http://localhost:3000/`
-   - Admin portal: `http://localhost:3000/admin`
-   - API endpoints: `http://localhost:3000/api/*`
+   - Frontend website: `http://localhost:8080/`
+   - Admin portal: `http://localhost:8080/admin`
+   - API endpoints: `http://localhost:8080/api/*`
 
 2. **Documentation Consolidation**: Consider merging Instagram documentation files into one comprehensive guide.
 

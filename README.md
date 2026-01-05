@@ -38,8 +38,8 @@ npm install
 node admin-server.js
 ```
 
-The website will be available at: **http://localhost:3000**
-The admin portal will be at: **http://localhost:3000/admin**
+The website will be available at: **http://localhost:8080**
+The admin portal will be at: **http://localhost:8080/admin**
 
 ### Option 3: VS Code Live Server
 

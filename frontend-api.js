@@ -3,7 +3,7 @@
 
 // Use current origin in production, localhost in development
 const API_BASE = window.location.origin.includes('localhost') 
-    ? 'http://localhost:3000/api' 
+    ? 'http://localhost:8080/api' 
     : `${window.location.origin}/api`;
 
 // Fetch events from API

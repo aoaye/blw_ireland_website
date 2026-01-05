@@ -11,7 +11,7 @@ async function loadInstagramConfigFromAPI() {
     try {
         // Use current origin in production, localhost in development
         const apiUrl = window.location.origin.includes('localhost')
-            ? 'http://localhost:3000/api/instagram-config'
+            ? 'http://localhost:8080/api/instagram-config'
             : `${window.location.origin}/api/instagram-config`;
         const response = await fetch(apiUrl);
         const config = await response.json();
@@ -28,7 +28,7 @@ async function loadInstagramConfigFromAPI() {
 // API endpoint (adjust if your backend is on a different server)
 // Note: This endpoint needs to be implemented in admin-server.js if using auto-fetch
 const API_ENDPOINT = window.location.origin.includes('localhost')
-    ? 'http://localhost:3000/api/instagram/latest'
+    ? 'http://localhost:8080/api/instagram/latest'
     : `${window.location.origin}/api/instagram/latest`;
 
 function loadInstagramPost() {

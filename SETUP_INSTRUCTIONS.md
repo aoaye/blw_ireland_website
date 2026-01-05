@@ -24,27 +24,27 @@ start-admin.bat
 node admin-server.js
 ```
 
-The admin portal will be available at: **http://localhost:3000/admin**
+The admin portal will be available at: **http://localhost:8080/admin**
 - Default password: `admin`
 
-The public website will also be available at: **http://localhost:3000**
+The public website will also be available at: **http://localhost:8080**
 - The admin server serves both the frontend website and admin portal
 
 ## Architecture
 
 ### Single Server Setup
 
-**Admin Server** (Port 3000) handles everything:
-- Serves the public website at `http://localhost:3000/`
-- Admin portal at `http://localhost:3000/admin`
-- API endpoints for data management at `http://localhost:3000/api/*`
+**Admin Server** (Port 8080) handles everything:
+- Serves the public website at `http://localhost:8080/`
+- Admin portal at `http://localhost:8080/admin`
+- API endpoints for data management at `http://localhost:8080/api/*`
 - File uploads
 - Authentication
 
 ### Data Flow
 
 ```
-Admin Server (Port 3000)
+Admin Server (Port 8080)
     ├── Frontend Website (/)
     ├── Admin Portal (/admin)
     └── API Endpoints (/api/*)
@@ -60,7 +60,7 @@ Admin Server (Port 3000)
    ```
 
 2. **Login to Admin Portal**
-   - Go to http://localhost:3000/admin
+   - Go to http://localhost:8080/admin
    - Password: `admin`
 
 3. **Change Password**
@@ -119,7 +119,7 @@ Combine both servers into one Express app that serves both admin and frontend.
 ## Troubleshooting
 
 **Admin portal won't start?**
-- Check if port 3000 is available
+- Check if port 8080 is available
 - Ensure all dependencies are installed: `npm install`
 
 **Can't login?**
@@ -128,7 +128,7 @@ Combine both servers into one Express app that serves both admin and frontend.
 - Verify admin-server.js is running
 
 **Frontend not loading data?**
-- Ensure admin server is running on port 3000
+- Ensure admin server is running on port 8080
 - Check browser console for CORS errors
 - Update API_BASE in frontend-api.js if needed
 

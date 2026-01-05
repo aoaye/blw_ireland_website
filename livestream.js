@@ -7,7 +7,7 @@ async function loadStreamConfigFromAPI() {
     try {
         // Use current origin in production, localhost in development
         const apiUrl = window.location.origin.includes('localhost')
-            ? 'http://localhost:3000/api/stream-config'
+            ? 'http://localhost:8080/api/stream-config'
             : `${window.location.origin}/api/stream-config`;
         const response = await fetch(apiUrl);
         const config = await response.json();

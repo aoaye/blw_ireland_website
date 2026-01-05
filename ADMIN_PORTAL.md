@@ -28,7 +28,7 @@ The BLW Ireland Zone Admin Portal provides comprehensive control over your websi
    ```
 
 3. **Access the Portal**
-   - Open: http://localhost:3000/admin
+   - Open: http://localhost:8080/admin
    - Default password: `admin`
 
 ## Features

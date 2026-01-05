@@ -8,7 +8,7 @@ const fs = require('fs').promises;
 const path = require('path');
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 8080;
 
 // Middleware
 app.use(bodyParser.json());
@@ -316,9 +316,9 @@ app.get('/admin', (req, res) => {
 // Start server (only if not in test environment)
 if (process.env.NODE_ENV !== 'test' && require.main === module) {
     initializeData().then(() => {
-        app.listen(PORT, () => {
-            console.log(`\n🔐 Admin Portal Server running on http://localhost:${PORT}`);
-            console.log(`📊 Admin Dashboard: http://localhost:${PORT}/admin`);
+        app.listen(PORT, '0.0.0.0', () => {
+            console.log(`\n🔐 Admin Portal Server running on http://0.0.0.0:${PORT}`);
+            console.log(`📊 Admin Dashboard: http://0.0.0.0:${PORT}/admin`);
             console.log(`\nDefault password: admin\n`);
         });
     });
