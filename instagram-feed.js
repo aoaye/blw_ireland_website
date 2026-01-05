@@ -14,13 +14,30 @@ async function loadInstagramConfigFromAPI() {
             ? 'http://localhost:8080/api/instagram-config'
             : `${window.location.origin}/api/instagram-config`;
         const response = await fetch(apiUrl);
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
         const config = await response.json();
+        console.log('Raw config from API:', config);
+        
         // If autoFetch is explicitly false, use manual mode; otherwise default to true
         // Simplified logic: if config.autoFetch is explicitly false, use false, otherwise use true
         AUTO_FETCH = config.autoFetch !== false; // Only false if explicitly set to false
         MANUAL_POST_URL = (config.manualPostUrl || '').trim();
-        console.log('Loaded Instagram config:', { AUTO_FETCH, MANUAL_POST_URL: MANUAL_POST_URL ? 'set' : 'empty' });
+        
+        console.log('Loaded Instagram config:', { 
+            AUTO_FETCH, 
+            MANUAL_POST_URL: MANUAL_POST_URL ? MANUAL_POST_URL.substring(0, 50) + '...' : 'empty',
+            MANUAL_POST_URL_length: MANUAL_POST_URL ? MANUAL_POST_URL.length : 0,
+            rawConfig: config
+        });
+        
+        // Validate that we got the data
+        if (config.autoFetch === false && !MANUAL_POST_URL) {
+            console.warn('WARNING: autoFetch is false but manualPostUrl is empty!');
+        }
     } catch (error) {
+        console.error('Error loading Instagram config:', error);
         console.log('Admin API not available, using default configuration');
     }
 }
@@ -34,11 +51,25 @@ const API_ENDPOINT = window.location.origin.includes('localhost')
 function loadInstagramPost() {
     const feedContainer = document.getElementById('instagram-feed');
     
-    if (!feedContainer) return;
+    if (!feedContainer) {
+        console.error('Instagram feed container not found!');
+        return;
+    }
+
+    // Debug: Log current state FIRST
+    console.log('Instagram post loading state:', {
+        AUTO_FETCH,
+        MANUAL_POST_URL: MANUAL_POST_URL ? MANUAL_POST_URL.substring(0, 60) + '...' : 'empty',
+        MANUAL_POST_URL_length: MANUAL_POST_URL ? MANUAL_POST_URL.length : 0,
+        feedContainer: feedContainer ? 'found' : 'not found',
+        condition1: !AUTO_FETCH,
+        condition2: MANUAL_POST_URL && MANUAL_POST_URL.trim() !== '',
+        willUseManual: !AUTO_FETCH && MANUAL_POST_URL && MANUAL_POST_URL.trim() !== ''
+    });
 
     // Priority 1: If manual URL is set and autoFetch is false, use manual URL
     if (!AUTO_FETCH && MANUAL_POST_URL && MANUAL_POST_URL.trim() !== '') {
-        console.log('Using manual post URL (autoFetch disabled):', MANUAL_POST_URL);
+        console.log('✓ Using manual post URL (autoFetch disabled):', MANUAL_POST_URL);
         embedInstagramPost(MANUAL_POST_URL);
         return;
     }
@@ -149,15 +180,24 @@ function cleanInstagramUrl(url) {
     // Example: https://www.instagram.com/p/POST_ID/?utm_source=... -> https://www.instagram.com/p/POST_ID/
     try {
         const urlObj = new URL(url);
-        // Reconstruct URL with just the pathname
-        return `${urlObj.protocol}//${urlObj.host}${urlObj.pathname}`;
+        // Reconstruct URL with just the pathname, ensuring it ends with /
+        let pathname = urlObj.pathname;
+        if (!pathname.endsWith('/')) {
+            pathname += '/';
+        }
+        return `${urlObj.protocol}//${urlObj.host}${pathname}`;
     } catch (e) {
         // If URL parsing fails, try to manually clean it
-        return url.split('?')[0].split('#')[0];
+        let cleaned = url.split('?')[0].split('#')[0];
+        if (!cleaned.endsWith('/')) {
+            cleaned += '/';
+        }
+        return cleaned;
     }
 }
 
 function embedInstagramPost(postUrl) {
+    console.log('embedInstagramPost called with:', postUrl);
     const feedContainer = document.getElementById('instagram-feed');
     
     if (!feedContainer) {
@@ -165,9 +205,18 @@ function embedInstagramPost(postUrl) {
         return;
     }
     
-    // Clean the URL to remove query parameters
+    // Clean the URL to remove query parameters and ensure it ends with /
     const cleanUrl = cleanInstagramUrl(postUrl);
-    console.log('Embedding Instagram post:', cleanUrl);
+    console.log('Cleaned Instagram URL:', cleanUrl);
+    
+    // Validate URL format
+    if (!cleanUrl.includes('instagram.com/p/')) {
+        console.error('Invalid Instagram post URL:', cleanUrl);
+        showSetupInstructions(feedContainer);
+        return;
+    }
+    
+    console.log('Creating Instagram embed blockquote...');
     
     // Create Instagram embed blockquote (Instagram's official embed format)
     feedContainer.innerHTML = `
@@ -178,6 +227,29 @@ function embedInstagramPost(postUrl) {
         </blockquote>
     `;
     
+    // Function to process embeds with retry logic
+    function processEmbeds(retryCount = 0) {
+        if (window.instgrm && window.instgrm.Embeds) {
+            try {
+                console.log('Processing Instagram embeds...');
+                window.instgrm.Embeds.process();
+                console.log('Instagram embeds processed successfully');
+            } catch (e) {
+                console.error('Error processing Instagram embeds:', e);
+                // Retry up to 3 times with increasing delays
+                if (retryCount < 3) {
+                    setTimeout(() => processEmbeds(retryCount + 1), 500 * (retryCount + 1));
+                }
+            }
+        } else {
+            console.warn('Instagram embed API not available');
+            // Retry if script might still be loading
+            if (retryCount < 5) {
+                setTimeout(() => processEmbeds(retryCount + 1), 300 * (retryCount + 1));
+            }
+        }
+    }
+    
     // Load Instagram's embed script if not already loaded
     if (!window.instgrm) {
         console.log('Loading Instagram embed script...');
@@ -186,42 +258,21 @@ function embedInstagramPost(postUrl) {
         script.async = true;
         script.onload = function() {
             console.log('Instagram embed script loaded successfully');
-            // Process embeds after a short delay to ensure everything is ready
-            setTimeout(function() {
-                if (window.instgrm && window.instgrm.Embeds) {
-                    console.log('Processing Instagram embeds...');
-                    try {
-                        window.instgrm.Embeds.process();
-                        console.log('Instagram embeds processed');
-                    } catch (e) {
-                        console.error('Error processing Instagram embeds:', e);
-                    }
-                } else {
-                    console.warn('Instagram embed API not available after script load');
-                }
-            }, 200);
+            // Process embeds after a delay to ensure everything is ready
+            setTimeout(() => processEmbeds(), 500);
         };
         script.onerror = function() {
             console.error('Failed to load Instagram embed script');
-            showSetupInstructions(feedContainer);
+            // Don't show placeholder immediately - the embed might still work
+            // Instagram's embed script might load from cache or another source
+            console.warn('Instagram embed script failed to load, but blockquote is in place. Instagram may still process it.');
         };
         document.body.appendChild(script);
     } else {
         // Process embeds if script already loaded
         console.log('Instagram script already loaded, processing embeds...');
-        if (window.instgrm && window.instgrm.Embeds) {
-            // Small delay to ensure DOM is ready
-            setTimeout(function() {
-                try {
-                    window.instgrm.Embeds.process();
-                    console.log('Instagram embeds processed (script already loaded)');
-                } catch (e) {
-                    console.error('Error processing Instagram embeds:', e);
-                }
-            }, 200);
-        } else {
-            console.warn('Instagram embed API not available');
-        }
+        // Small delay to ensure DOM is ready
+        setTimeout(() => processEmbeds(), 300);
     }
 }
 
@@ -229,7 +280,11 @@ function embedInstagramPost(postUrl) {
 document.addEventListener('DOMContentLoaded', async function() {
     console.log('DOM loaded, initializing Instagram feed...');
     await loadInstagramConfigFromAPI();
-    console.log('Config loaded, loading post...', { AUTO_FETCH, MANUAL_POST_URL: MANUAL_POST_URL ? 'set' : 'empty' });
+    console.log('Config loaded, loading post...', { 
+        AUTO_FETCH, 
+        MANUAL_POST_URL: MANUAL_POST_URL ? MANUAL_POST_URL.substring(0, 60) + '...' : 'empty',
+        MANUAL_POST_URL_length: MANUAL_POST_URL ? MANUAL_POST_URL.length : 0
+    });
     loadInstagramPost();
     
     // Periodically check for config updates (every 30 seconds)

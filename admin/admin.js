@@ -47,7 +47,7 @@ document.getElementById('login-form').addEventListener('submit', async (e) => {
 
 // Logout
 document.getElementById('logout-btn').addEventListener('click', async () => {
-    await fetch(`${API_BASE}/admin/logout', { 
+    await fetch(`${API_BASE}/admin/logout`, { 
         method: 'POST',
         credentials: 'include' // Include cookies for session authentication
     });
@@ -197,7 +197,24 @@ if (instagramForm) {
             console.log('Instagram config save result:', result);
             
             if (result.success) {
-                alert('Instagram configuration saved successfully!');
+                // Check if homepage post was updated
+                const autoFetch = document.getElementById('instagram-auto-fetch').checked;
+                const manualUrl = document.getElementById('instagram-manual-url').value.trim();
+                
+                let message = 'Instagram configuration saved successfully!';
+                
+                if (!autoFetch && manualUrl) {
+                    // Manual mode with URL - post should update on homepage
+                    message += '\n\nThe homepage post should update within 30 seconds. If it doesn\'t appear, please refresh the homepage.';
+                } else if (autoFetch) {
+                    // Auto-fetch mode - post will update automatically
+                    message += '\n\nThe homepage will automatically fetch the latest post.';
+                } else {
+                    // No URL set
+                    message += '\n\nNote: No manual URL is set. The homepage will show a placeholder until a post URL is configured.';
+                }
+                
+                alert(message);
                 loadDashboardData(); // Refresh dashboard to show updated status
             } else {
                 throw new Error('Save failed');
@@ -214,23 +231,69 @@ if (instagramForm) {
 // Add event listener for autofetch checkbox to toggle manual URL field
 const autoFetchCheckbox = document.getElementById('instagram-auto-fetch');
 if (autoFetchCheckbox) {
-    autoFetchCheckbox.addEventListener('change', toggleManualUrlField);
+    autoFetchCheckbox.addEventListener('change', toggleInstagramFields);
 }
 
-// Toggle manual URL field based on autofetch checkbox
-function toggleManualUrlField() {
+// Toggle Instagram form fields based on autofetch checkbox
+function toggleInstagramFields() {
     const autoFetch = document.getElementById('instagram-auto-fetch').checked;
     const manualUrlField = document.getElementById('instagram-manual-url');
-    const manualUrlLabel = manualUrlField.previousElementSibling;
+    const manualUrlLabel = manualUrlField ? manualUrlField.previousElementSibling : null;
+    const accessTokenField = document.getElementById('instagram-access-token');
+    const accessTokenLabel = accessTokenField ? accessTokenField.previousElementSibling : null;
+    const userIdField = document.getElementById('instagram-user-id');
+    const userIdLabel = userIdField ? userIdField.previousElementSibling : null;
     
     if (autoFetch) {
-        manualUrlField.disabled = true;
-        manualUrlField.style.opacity = '0.5';
+        // Auto-fetch enabled: disable manual URL, enable API fields
+        if (manualUrlField) {
+            manualUrlField.disabled = true;
+            manualUrlField.required = false;
+            manualUrlField.style.opacity = '0.5';
+            manualUrlField.placeholder = 'Not needed when auto-fetch is enabled';
+        }
         if (manualUrlLabel) manualUrlLabel.style.opacity = '0.5';
+        
+        if (accessTokenField) {
+            accessTokenField.disabled = false;
+            accessTokenField.required = false;
+            accessTokenField.style.opacity = '1';
+            accessTokenField.placeholder = 'Optional: For API access';
+        }
+        if (accessTokenLabel) accessTokenLabel.style.opacity = '1';
+        
+        if (userIdField) {
+            userIdField.disabled = false;
+            userIdField.required = false;
+            userIdField.style.opacity = '1';
+            userIdField.placeholder = 'Optional: For API access';
+        }
+        if (userIdLabel) userIdLabel.style.opacity = '1';
     } else {
-        manualUrlField.disabled = false;
-        manualUrlField.style.opacity = '1';
+        // Auto-fetch disabled: enable manual URL, disable API fields
+        if (manualUrlField) {
+            manualUrlField.disabled = false;
+            manualUrlField.required = false;
+            manualUrlField.style.opacity = '1';
+            manualUrlField.placeholder = 'https://www.instagram.com/p/POST_ID/';
+        }
         if (manualUrlLabel) manualUrlLabel.style.opacity = '1';
+        
+        if (accessTokenField) {
+            accessTokenField.disabled = true;
+            accessTokenField.required = false;
+            accessTokenField.style.opacity = '0.5';
+            accessTokenField.placeholder = 'Not needed when using manual URL';
+        }
+        if (accessTokenLabel) accessTokenLabel.style.opacity = '0.5';
+        
+        if (userIdField) {
+            userIdField.disabled = true;
+            userIdField.required = false;
+            userIdField.style.opacity = '0.5';
+            userIdField.placeholder = 'Not needed when using manual URL';
+        }
+        if (userIdLabel) userIdLabel.style.opacity = '0.5';
     }
 }
 
@@ -240,8 +303,9 @@ async function loadInstagramConfig() {
         const config = await fetch(`${API_BASE}/instagram-config`).then(r => r.json());
         document.getElementById('instagram-auto-fetch').checked = config.autoFetch !== false; // Default to true if not set
         document.getElementById('instagram-manual-url').value = config.manualPostUrl || '';
+        document.getElementById('instagram-access-token').value = config.accessToken || '';
         document.getElementById('instagram-user-id').value = config.userId || '';
-        toggleManualUrlField(); // Set initial state
+        toggleInstagramFields(); // Set initial state
     } catch (error) {
         console.error('Failed to load Instagram config:', error);
     }
@@ -479,6 +543,7 @@ document.getElementById('image-upload-form').addEventListener('submit', async (e
     e.preventDefault();
     const fileInput = document.getElementById('image-file');
     const file = fileInput.files[0];
+    const purpose = document.getElementById('image-purpose').value;
     
     if (!file) {
         alert('Please select an image file to upload');
@@ -501,7 +566,22 @@ document.getElementById('image-upload-form').addEventListener('submit', async (e
         }
         
         const data = await response.json();
-        alert('Image uploaded successfully!');
+        
+        // Apply image to selected purpose
+        if (purpose !== 'other') {
+            await applyImageToPurpose(data.url, purpose);
+        }
+        
+        // Show success message
+        const successMsg = document.createElement('div');
+        successMsg.className = 'upload-success-message';
+        successMsg.textContent = `Image uploaded successfully! ${purpose !== 'other' ? `Applied to ${purpose.replace('-', ' ')}.` : ''}`;
+        successMsg.style.cssText = 'background: var(--success); color: white; padding: 1rem; border-radius: 5px; margin: 1rem 0;';
+        const form = document.getElementById('image-upload-form');
+        form.parentNode.insertBefore(successMsg, form.nextSibling);
+        
+        setTimeout(() => successMsg.remove(), 5000);
+        
         document.getElementById('image-upload-form').reset();
         loadImages();
     } catch (error) {
@@ -510,9 +590,118 @@ document.getElementById('image-upload-form').addEventListener('submit', async (e
     }
 });
 
-async function loadImages() {
-    // This would list uploaded images - implementation depends on your needs
+async function applyImageToPurpose(imageUrl, purpose) {
+    try {
+        if (purpose === 'hero-background') {
+            const config = await fetch(`${API_BASE}/config`).then(r => r.json());
+            await fetch(`${API_BASE}/config`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ ...config, heroBackground: imageUrl })
+            });
+        } else if (purpose.startsWith('group-')) {
+            const groupKey = purpose === 'group-a' ? 'groupA' : purpose === 'group-b' ? 'groupB' : 'groupC';
+            const zoneData = await fetch(`${API_BASE}/zone-data`).then(r => r.json());
+            zoneData[groupKey].image = imageUrl;
+            await fetch(`${API_BASE}/zone-data`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify(zoneData)
+            });
+        }
+    } catch (error) {
+        console.error('Error applying image to purpose:', error);
+    }
 }
+
+async function loadImages() {
+    try {
+        const container = document.getElementById('uploaded-images');
+        if (!container) return;
+        
+        const response = await fetch(`${API_BASE}/upload`, {
+            credentials: 'include'
+        });
+        
+        if (!response.ok) {
+            throw new Error('Failed to load images');
+        }
+        
+        const images = await response.json();
+        
+        if (images.length === 0) {
+            container.innerHTML = '<p style="text-align: center; color: #666; padding: 2rem;">No images uploaded yet.</p>';
+            return;
+        }
+        
+        // Get current usage information
+        const config = await fetch(`${API_BASE}/config`).then(r => r.json()).catch(() => ({}));
+        const zoneData = await fetch(`${API_BASE}/zone-data`).then(r => r.json()).catch(() => ({}));
+        
+        container.innerHTML = '';
+        
+        images.forEach(image => {
+            const imageUrl = image.url;
+            let usedIn = [];
+            
+            if (config.heroBackground === imageUrl) {
+                usedIn.push('Hero Background');
+            }
+            if (zoneData.groupA && zoneData.groupA.image === imageUrl) {
+                usedIn.push('Group A');
+            }
+            if (zoneData.groupB && zoneData.groupB.image === imageUrl) {
+                usedIn.push('Group B');
+            }
+            if (zoneData.groupC && zoneData.groupC.image === imageUrl) {
+                usedIn.push('Group C');
+            }
+            
+            const card = document.createElement('div');
+            card.className = 'image-item';
+            card.innerHTML = `
+                <img src="${image.url}" alt="${image.filename}" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22150%22 height=%22150%22%3E%3Crect fill=%22%23ddd%22 width=%22150%22 height=%22150%22/%3E%3Ctext fill=%22%23999%22 font-family=%22sans-serif%22 font-size=%2214%22 dy=%2210.5%22 font-weight=%22bold%22 x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22%3EImage%3C/text%3E%3C/svg%3E'">
+                <div class="image-info">
+                    <p><strong>${image.filename}</strong></p>
+                    <p>${(image.size / 1024).toFixed(2)} KB</p>
+                    ${usedIn.length > 0 ? `<p style="color: var(--success); font-weight: 600;">✓ Used in: ${usedIn.join(', ')}</p>` : '<p style="color: #999;">Not in use</p>'}
+                    <button class="btn btn-danger btn-small" onclick="deleteImage('${image.filename}')">Delete</button>
+                </div>
+            `;
+            container.appendChild(card);
+        });
+    } catch (error) {
+        console.error('Error loading images:', error);
+        const container = document.getElementById('uploaded-images');
+        if (container) {
+            container.innerHTML = '<p style="text-align: center; color: var(--danger); padding: 2rem;">Error loading images.</p>';
+        }
+    }
+}
+
+window.deleteImage = async (filename) => {
+    if (!confirm(`Are you sure you want to delete ${filename}?`)) return;
+    
+    try {
+        const response = await fetch(`${API_BASE}/upload/${filename}`, {
+            method: 'DELETE',
+            credentials: 'include'
+        });
+        
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({ error: 'Delete failed' }));
+            throw new Error(errorData.error || 'Delete failed');
+        }
+        
+        alert('Image deleted successfully!');
+        loadImages();
+    } catch (error) {
+        console.error('Delete error:', error);
+        alert(`Failed to delete image: ${error.message || 'Unknown error'}`);
+    }
+};
 
 // Settings
 document.getElementById('site-config-form').addEventListener('submit', async (e) => {

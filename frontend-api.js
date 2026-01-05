@@ -124,6 +124,19 @@ async function updateZoneStructure() {
             populateColleges();
         }
     }
+    
+    // Update group images
+    if (typeof displayGroupImage === 'function') {
+        if (zoneData.groupA?.image) {
+            displayGroupImage('groupA', zoneData.groupA.image);
+        }
+        if (zoneData.groupB?.image) {
+            displayGroupImage('groupB', zoneData.groupB.image);
+        }
+        if (zoneData.groupC?.image) {
+            displayGroupImage('groupC', zoneData.groupC.image);
+        }
+    }
 }
 
 // Update site title and tagline
@@ -137,10 +150,44 @@ async function updateSiteContent() {
         heroTagline.textContent = config.tagline;
     }
     
+    // Update hero background image
+    const heroSection = document.querySelector('.hero');
+    if (heroSection) {
+        if (config.heroBackground) {
+            // Use current origin in production, localhost in development
+            const imageUrl = window.location.origin.includes('localhost')
+                ? `http://localhost:8080${config.heroBackground}`
+                : config.heroBackground;
+            // Set background image (overlay gradient is handled by CSS ::before)
+            heroSection.style.backgroundImage = `url(${imageUrl})`;
+            heroSection.style.backgroundSize = 'cover';
+            heroSection.style.backgroundPosition = 'center';
+            heroSection.style.backgroundRepeat = 'no-repeat';
+        } else {
+            // Reset to gradient if no background image
+            heroSection.style.backgroundImage = 'linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%)';
+            heroSection.style.backgroundSize = '';
+            heroSection.style.backgroundPosition = '';
+            heroSection.style.backgroundRepeat = '';
+        }
+    }
+    
     // Update about page tagline
     const aboutTagline = document.querySelector('.subtitle');
     if (aboutTagline && config.tagline) {
         aboutTagline.textContent = config.tagline;
+    }
+    
+    // Update about page hero background image (if using same image as homepage)
+    const aboutHero = document.querySelector('.about-hero');
+    if (aboutHero && config.heroBackground) {
+        const imageUrl = window.location.origin.includes('localhost')
+            ? `http://localhost:8080${config.heroBackground}`
+            : config.heroBackground;
+        aboutHero.style.backgroundImage = `url(${imageUrl})`;
+        aboutHero.style.backgroundSize = 'cover';
+        aboutHero.style.backgroundPosition = 'center';
+        aboutHero.style.backgroundRepeat = 'no-repeat';
     }
 }
 

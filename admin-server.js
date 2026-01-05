@@ -13,10 +13,8 @@ const PORT = process.env.PORT || 8080;
 // Middleware
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
-
-// Serve static files (CSS, JS, images, etc.) - accessible from all subdomains
-// Exclude index.html files so subdomain routing can handle them
-app.use(express.static('.', { index: false }));
+app.use(express.static('.')); // Serve static files
+app.use('/admin', express.static('admin')); // Serve admin static files
 app.use('/uploads', express.static('uploads')); // Serve uploaded images
 
 // Session configuration
@@ -26,20 +24,23 @@ app.use(session({
     saveUninitialized: false,
     cookie: { 
         secure: process.env.NODE_ENV === 'production', // HTTPS only in production
+        httpOnly: true, // Prevent XSS attacks
+        sameSite: 'lax', // CSRF protection
         maxAge: 24 * 60 * 60 * 1000 // 24 hours
     }
 }));
 
 // File upload configuration
 const storage = multer.diskStorage({
-    destination: async (req, file, cb) => {
+    destination: (req, file, cb) => {
         const uploadPath = 'uploads';
-        try {
-            await fs.mkdir(uploadPath, { recursive: true });
-            cb(null, uploadPath);
-        } catch (error) {
-            cb(error);
-        }
+        // Multer callbacks should handle async operations properly
+        fs.mkdir(uploadPath, { recursive: true })
+            .then(() => cb(null, uploadPath))
+            .catch((error) => {
+                console.error('Error creating upload directory:', error);
+                cb(error);
+            });
     },
     filename: (req, file, cb) => {
         const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
@@ -161,19 +162,36 @@ async function writeJSON(filePath, data) {
 // ==================== AUTHENTICATION ROUTES ====================
 
 app.post('/api/admin/login', async (req, res) => {
-    const { password } = req.body;
-    const config = await readJSON(CONFIG_FILE);
-    
-    if (!config) {
-        return res.status(500).json({ error: 'Configuration not found' });
-    }
-    
-    const isValid = await bcrypt.compare(password, config.adminPassword);
-    if (isValid) {
-        req.session.authenticated = true;
-        res.json({ success: true });
-    } else {
-        res.status(401).json({ error: 'Invalid password' });
+    try {
+        const { password } = req.body;
+        
+        if (!password) {
+            return res.status(400).json({ error: 'Password is required' });
+        }
+        
+        const config = await readJSON(CONFIG_FILE);
+        
+        if (!config || !config.adminPassword) {
+            return res.status(500).json({ error: 'Configuration not found' });
+        }
+        
+        const isValid = await bcrypt.compare(password, config.adminPassword);
+        if (isValid) {
+            req.session.authenticated = true;
+            // Explicitly save session to ensure cookie is set
+            req.session.save((err) => {
+                if (err) {
+                    console.error('Session save error:', err);
+                    return res.status(500).json({ error: 'Session error' });
+                }
+                res.json({ success: true });
+            });
+        } else {
+            res.status(401).json({ error: 'Invalid password' });
+        }
+    } catch (error) {
+        console.error('Login error:', error);
+        res.status(500).json({ error: 'Login failed' });
     }
 });
 
@@ -289,67 +307,127 @@ app.put('/api/instagram-config', requireAuth, async (req, res) => {
 
 // ==================== IMAGE UPLOAD ROUTES ====================
 
-app.post('/api/upload', requireAuth, upload.single('image'), async (req, res) => {
-    if (!req.file) {
-        return res.status(400).json({ error: 'No file uploaded' });
-    }
-    res.json({ 
-        success: true, 
-        url: `/uploads/${req.file.filename}`,
-        filename: req.file.filename
+app.post('/api/upload', requireAuth, (req, res, next) => {
+    upload.single('image')(req, res, (err) => {
+        if (err) {
+            console.error('Multer error:', err);
+            if (err instanceof multer.MulterError) {
+                if (err.code === 'LIMIT_FILE_SIZE') {
+                    return res.status(400).json({ error: 'File too large. Maximum size is 10MB.' });
+                }
+                return res.status(400).json({ error: 'Upload error: ' + err.message });
+            }
+            return res.status(500).json({ error: 'Upload failed: ' + err.message });
+        }
+        next();
     });
+}, async (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ error: 'No file uploaded' });
+        }
+        
+        console.log('File uploaded successfully:', req.file.filename);
+        res.json({ 
+            success: true, 
+            url: `/uploads/${req.file.filename}`,
+            filename: req.file.filename
+        });
+    } catch (error) {
+        console.error('Upload handler error:', error);
+        res.status(500).json({ error: 'Upload failed: ' + error.message });
+    }
+});
+
+app.get('/api/upload', requireAuth, async (req, res) => {
+    try {
+        const uploadsDir = 'uploads';
+        const files = await fs.readdir(uploadsDir);
+        const imageFiles = files.filter(file => {
+            const ext = path.extname(file).toLowerCase();
+            return ['.jpg', '.jpeg', '.png', '.gif', '.webp'].includes(ext);
+        });
+        
+        const images = await Promise.all(imageFiles.map(async (filename) => {
+            const filePath = path.join(uploadsDir, filename);
+            const stats = await fs.stat(filePath);
+            return {
+                filename,
+                url: `/uploads/${filename}`,
+                size: stats.size,
+                uploadedAt: stats.birthtime
+            };
+        }));
+        
+        res.json(images);
+    } catch (error) {
+        console.error('Error listing images:', error);
+        res.status(500).json({ error: 'Failed to list images' });
+    }
 });
 
 app.delete('/api/upload/:filename', requireAuth, async (req, res) => {
     try {
-        const filePath = path.join('uploads', req.params.filename);
+        const filename = req.params.filename;
+        const filePath = path.join('uploads', filename);
+        
+        // Check if file exists
+        try {
+            await fs.access(filePath);
+        } catch {
+            return res.status(404).json({ error: 'File not found' });
+        }
+        
+        // Check if image is being used anywhere before deleting
+        const config = await readJSON(CONFIG_FILE);
+        const zoneData = await readJSON(ZONE_DATA_FILE);
+        
+        const imageUrl = `/uploads/${filename}`;
+        let inUse = false;
+        let usedIn = [];
+        
+        if (config && config.heroBackground === imageUrl) {
+            inUse = true;
+            usedIn.push('Hero Background');
+        }
+        
+        if (zoneData) {
+            if (zoneData.groupA && zoneData.groupA.image === imageUrl) {
+                inUse = true;
+                usedIn.push('Group A');
+            }
+            if (zoneData.groupB && zoneData.groupB.image === imageUrl) {
+                inUse = true;
+                usedIn.push('Group B');
+            }
+            if (zoneData.groupC && zoneData.groupC.image === imageUrl) {
+                inUse = true;
+                usedIn.push('Group C');
+            }
+        }
+        
+        if (inUse) {
+            return res.status(400).json({ 
+                error: `Cannot delete image. It is currently being used in: ${usedIn.join(', ')}. Please remove it from those locations first.` 
+            });
+        }
+        
         await fs.unlink(filePath);
         res.json({ success: true });
     } catch (error) {
-        res.status(404).json({ error: 'File not found' });
+        console.error('Error deleting image:', error);
+        res.status(500).json({ error: 'Failed to delete image' });
     }
 });
 
-// ==================== SUBDOMAIN-BASED ROUTING ====================
+// ==================== FAVICON ROUTE ====================
 
-// Subdomain-based routing middleware
-// This should be after API routes but before catch-all static file serving
-app.use((req, res, next) => {
-    // Skip API routes and static file requests
-    if (req.path.startsWith('/api') || 
-        req.path.startsWith('/uploads') ||
-        req.path.match(/\.(css|js|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot)$/i)) {
-        return next();
-    }
-
-    // Extract hostname (remove port if present)
-    const host = (req.hostname || req.get('host') || '').split(':')[0];
-    
-    // Check if hostname starts with 'admin.' (e.g., admin.blwirelandzone.org)
-    // Also handle localhost variants for development
-    if (host.startsWith('admin.') || 
-        host === 'admin' || 
-        host.startsWith('admin.localhost')) {
-        // Serve admin portal
-        return res.sendFile(path.join(__dirname, 'admin', 'index.html'), (err) => {
-            if (err) {
-                console.error('Error serving admin portal:', err);
-                res.status(500).send('Error loading admin portal');
-            }
-        });
-    }
-    
-    // For all other requests, serve public website
-    // This handles root domain and any other subdomains
-    return res.sendFile(path.join(__dirname, 'index.html'), (err) => {
-        if (err) {
-            console.error('Error serving public website:', err);
-            res.status(500).send('Error loading website');
-        }
-    });
+app.get('/favicon.ico', (req, res) => {
+    res.status(204).end(); // No content, but successful
 });
 
-// Fallback: Keep /admin route for backwards compatibility
+// ==================== ADMIN DASHBOARD ROUTE ====================
+
 app.get('/admin', (req, res) => {
     res.sendFile(path.join(__dirname, 'admin', 'index.html'));
 });
@@ -358,13 +436,9 @@ app.get('/admin', (req, res) => {
 if (process.env.NODE_ENV !== 'test' && require.main === module) {
     initializeData().then(() => {
         app.listen(PORT, '0.0.0.0', () => {
-            console.log(`\n🚀 Server running on http://0.0.0.0:${PORT}`);
-            console.log(`\n📊 Subdomain Routing:`);
-            console.log(`   - Admin Portal: admin.yourdomain.com or http://admin.localhost:${PORT}`);
-            console.log(`   - Public Site: yourdomain.com or http://localhost:${PORT}`);
-            console.log(`\n📝 Fallback Routes:`);
-            console.log(`   - Admin Portal: http://localhost:${PORT}/admin`);
-            console.log(`\n🔐 Default password: admin\n`);
+            console.log(`\n🔐 Admin Portal Server running on http://0.0.0.0:${PORT}`);
+            console.log(`📊 Admin Dashboard: http://0.0.0.0:${PORT}/admin`);
+            console.log(`\nDefault password: admin\n`);
         });
     });
 }

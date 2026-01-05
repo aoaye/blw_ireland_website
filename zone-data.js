@@ -38,6 +38,38 @@ const zoneData = {
     }
 };
 
+// Display group image on the about page
+window.displayGroupImage = function(groupKey, imageUrl) {
+    // Map groupKey to group index (groupA = 1, groupB = 2, groupC = 3)
+    const groupIndex = groupKey === 'groupA' ? 1 : groupKey === 'groupB' ? 2 : 3;
+    const groupDropdown = document.querySelector(`.group-dropdown:nth-of-type(${groupIndex})`);
+    
+    if (!groupDropdown || !imageUrl) return;
+    
+    // Construct full image URL
+    const fullImageUrl = window.location.origin.includes('localhost')
+        ? `http://localhost:8080${imageUrl}`
+        : imageUrl;
+    
+    // Find or create image container
+    let imageContainer = groupDropdown.querySelector('.group-image-container');
+    if (!imageContainer) {
+        const groupHeader = groupDropdown.querySelector('.group-header');
+        if (groupHeader) {
+            imageContainer = document.createElement('div');
+            imageContainer.className = 'group-image-container';
+            groupHeader.insertAdjacentElement('afterend', imageContainer);
+        }
+    }
+    
+    if (imageContainer) {
+        imageContainer.innerHTML = `
+            <img src="${fullImageUrl}" alt="${zoneData[groupKey].name}" class="group-image-display" 
+                 onerror="this.style.display='none'">
+        `;
+    }
+};
+
 // Function to populate colleges in the dropdown
 function populateColleges() {
     // Group A
@@ -83,7 +115,7 @@ function populateColleges() {
     }
 }
 
-// Populate colleges when page loads
+// Populate colleges and images when page loads
 document.addEventListener('DOMContentLoaded', async function() {
     // Try to load from API first
     const apiData = await loadZoneDataFromAPI();
@@ -91,6 +123,20 @@ document.addEventListener('DOMContentLoaded', async function() {
         zoneData.groupA.colleges = apiData.groupA?.colleges || [];
         zoneData.groupB.colleges = apiData.groupB?.colleges || [];
         zoneData.groupC.colleges = apiData.groupC?.colleges || [];
+        
+        // Update group images
+        if (apiData.groupA?.image) {
+            zoneData.groupA.image = apiData.groupA.image;
+            displayGroupImage('groupA', apiData.groupA.image);
+        }
+        if (apiData.groupB?.image) {
+            zoneData.groupB.image = apiData.groupB.image;
+            displayGroupImage('groupB', apiData.groupB.image);
+        }
+        if (apiData.groupC?.image) {
+            zoneData.groupC.image = apiData.groupC.image;
+            displayGroupImage('groupC', apiData.groupC.image);
+        }
     }
     populateColleges();
 });
