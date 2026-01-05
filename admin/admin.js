@@ -27,6 +27,7 @@ document.getElementById('login-form').addEventListener('submit', async (e) => {
         const response = await fetch(`${API_BASE}/admin/login`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
+            credentials: 'include', // Include cookies for session authentication
             body: JSON.stringify({ password })
         });
         
@@ -46,7 +47,10 @@ document.getElementById('login-form').addEventListener('submit', async (e) => {
 
 // Logout
 document.getElementById('logout-btn').addEventListener('click', async () => {
-    await fetch(`${API_BASE}/admin/logout`, { method: 'POST' });
+    await fetch(`${API_BASE}/admin/logout', { 
+        method: 'POST',
+        credentials: 'include' // Include cookies for session authentication
+    });
     showLogin();
 });
 
@@ -118,6 +122,7 @@ if (streamForm) {
             const response = await fetch(`${API_BASE}/stream-config`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
+                credentials: 'include', // Include cookies for session authentication
                 body: JSON.stringify(config)
             });
             
@@ -178,6 +183,7 @@ if (instagramForm) {
             const response = await fetch(`${API_BASE}/instagram-config`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
+                credentials: 'include', // Include cookies for session authentication
                 body: JSON.stringify(config)
             });
             
@@ -292,12 +298,14 @@ document.getElementById('event-form').addEventListener('submit', async (e) => {
             await fetch(`${API_BASE}/events/${currentEventId}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
+                credentials: 'include', // Include cookies for session authentication
                 body: JSON.stringify(eventData)
             });
         } else {
             await fetch(`${API_BASE}/events`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
+                credentials: 'include', // Include cookies for session authentication
                 body: JSON.stringify(eventData)
             });
         }
@@ -333,7 +341,10 @@ window.deleteEvent = async (id) => {
     if (!confirm('Are you sure you want to delete this event?')) return;
     
     try {
-        await fetch(`${API_BASE}/events/${id}`, { method: 'DELETE' });
+        await fetch(`${API_BASE}/events/${id}`, { 
+            method: 'DELETE',
+            credentials: 'include' // Include cookies for session authentication
+        });
         loadEvents();
         loadDashboardData();
     } catch (error) {
@@ -408,21 +419,23 @@ window.updateCollege = async (groupKey, index, value) => {
     const zoneData = await fetch(`${API_BASE}/zone-data`).then(r => r.json());
     if (!zoneData[groupKey].colleges) zoneData[groupKey].colleges = [];
     zoneData[groupKey].colleges[index] = value;
-    await fetch(`${API_BASE}/zone-data`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(zoneData)
-    });
+        await fetch(`${API_BASE}/zone-data`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include', // Include cookies for session authentication
+            body: JSON.stringify(zoneData)
+        });
 };
 
 window.removeCollege = async (groupKey, index) => {
     const zoneData = await fetch(`${API_BASE}/zone-data`).then(r => r.json());
     zoneData[groupKey].colleges.splice(index, 1);
-    await fetch(`${API_BASE}/zone-data`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(zoneData)
-    });
+        await fetch(`${API_BASE}/zone-data`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include', // Include cookies for session authentication
+            body: JSON.stringify(zoneData)
+        });
     loadZoneStructure();
 };
 
@@ -435,8 +448,15 @@ window.uploadGroupImage = async (groupKey, input) => {
     try {
         const response = await fetch(`${API_BASE}/upload`, {
             method: 'POST',
+            credentials: 'include', // Include cookies for session authentication
             body: formData
         });
+        
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({ error: 'Upload failed' }));
+            throw new Error(errorData.error || `Upload failed with status ${response.status}`);
+        }
+        
         const data = await response.json();
         
         const zoneData = await fetch(`${API_BASE}/zone-data`).then(r => r.json());
@@ -444,31 +464,49 @@ window.uploadGroupImage = async (groupKey, input) => {
         await fetch(`${API_BASE}/zone-data`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
+            credentials: 'include', // Include cookies for session authentication
             body: JSON.stringify(zoneData)
         });
         loadZoneStructure();
     } catch (error) {
-        alert('Failed to upload image');
+        console.error('Upload error:', error);
+        alert(`Failed to upload image: ${error.message || 'Unknown error'}`);
     }
 };
 
 // Image Management
 document.getElementById('image-upload-form').addEventListener('submit', async (e) => {
     e.preventDefault();
+    const fileInput = document.getElementById('image-file');
+    const file = fileInput.files[0];
+    
+    if (!file) {
+        alert('Please select an image file to upload');
+        return;
+    }
+    
     const formData = new FormData();
-    formData.append('image', document.getElementById('image-file').files[0]);
+    formData.append('image', file);
     
     try {
         const response = await fetch(`${API_BASE}/upload`, {
             method: 'POST',
+            credentials: 'include', // Include cookies for session authentication
             body: formData
         });
+        
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({ error: 'Upload failed' }));
+            throw new Error(errorData.error || `Upload failed with status ${response.status}`);
+        }
+        
         const data = await response.json();
         alert('Image uploaded successfully!');
         document.getElementById('image-upload-form').reset();
         loadImages();
     } catch (error) {
-        alert('Failed to upload image');
+        console.error('Upload error:', error);
+        alert(`Failed to upload image: ${error.message || 'Unknown error'}`);
     }
 });
 
@@ -488,6 +526,7 @@ document.getElementById('site-config-form').addEventListener('submit', async (e)
         await fetch(`${API_BASE}/config`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
+            credentials: 'include', // Include cookies for session authentication
             body: JSON.stringify(config)
         });
         alert('Site configuration saved!');

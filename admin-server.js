@@ -13,7 +13,10 @@ const PORT = process.env.PORT || 8080;
 // Middleware
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
-app.use(express.static('.')); // Serve static files
+
+// Serve static files (CSS, JS, images, etc.) - accessible from all subdomains
+// Exclude index.html files so subdomain routing can handle them
+app.use(express.static('.', { index: false }));
 app.use('/uploads', express.static('uploads')); // Serve uploaded images
 
 // Session configuration
@@ -307,8 +310,46 @@ app.delete('/api/upload/:filename', requireAuth, async (req, res) => {
     }
 });
 
-// ==================== ADMIN DASHBOARD ROUTE ====================
+// ==================== SUBDOMAIN-BASED ROUTING ====================
 
+// Subdomain-based routing middleware
+// This should be after API routes but before catch-all static file serving
+app.use((req, res, next) => {
+    // Skip API routes and static file requests
+    if (req.path.startsWith('/api') || 
+        req.path.startsWith('/uploads') ||
+        req.path.match(/\.(css|js|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot)$/i)) {
+        return next();
+    }
+
+    // Extract hostname (remove port if present)
+    const host = (req.hostname || req.get('host') || '').split(':')[0];
+    
+    // Check if hostname starts with 'admin.' (e.g., admin.blwirelandzone.org)
+    // Also handle localhost variants for development
+    if (host.startsWith('admin.') || 
+        host === 'admin' || 
+        host.startsWith('admin.localhost')) {
+        // Serve admin portal
+        return res.sendFile(path.join(__dirname, 'admin', 'index.html'), (err) => {
+            if (err) {
+                console.error('Error serving admin portal:', err);
+                res.status(500).send('Error loading admin portal');
+            }
+        });
+    }
+    
+    // For all other requests, serve public website
+    // This handles root domain and any other subdomains
+    return res.sendFile(path.join(__dirname, 'index.html'), (err) => {
+        if (err) {
+            console.error('Error serving public website:', err);
+            res.status(500).send('Error loading website');
+        }
+    });
+});
+
+// Fallback: Keep /admin route for backwards compatibility
 app.get('/admin', (req, res) => {
     res.sendFile(path.join(__dirname, 'admin', 'index.html'));
 });
@@ -317,9 +358,13 @@ app.get('/admin', (req, res) => {
 if (process.env.NODE_ENV !== 'test' && require.main === module) {
     initializeData().then(() => {
         app.listen(PORT, '0.0.0.0', () => {
-            console.log(`\n🔐 Admin Portal Server running on http://0.0.0.0:${PORT}`);
-            console.log(`📊 Admin Dashboard: http://0.0.0.0:${PORT}/admin`);
-            console.log(`\nDefault password: admin\n`);
+            console.log(`\n🚀 Server running on http://0.0.0.0:${PORT}`);
+            console.log(`\n📊 Subdomain Routing:`);
+            console.log(`   - Admin Portal: admin.yourdomain.com or http://admin.localhost:${PORT}`);
+            console.log(`   - Public Site: yourdomain.com or http://localhost:${PORT}`);
+            console.log(`\n📝 Fallback Routes:`);
+            console.log(`   - Admin Portal: http://localhost:${PORT}/admin`);
+            console.log(`\n🔐 Default password: admin\n`);
         });
     });
 }
