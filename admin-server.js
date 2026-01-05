@@ -10,9 +10,37 @@ const path = require('path');
 const app = express();
 const PORT = process.env.PORT || 8080;
 
+// Trust proxy (important for production behind reverse proxy/load balancer)
+app.set('trust proxy', 1);
+
 // Middleware
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
+
+// Determine if we should use secure cookies (HTTPS)
+// IMPORTANT: For HTTPS production sites (like www.blwirelandzone.org), secure MUST be true
+// or the browser will NOT send cookies. Set one of these environment variables:
+// - NODE_ENV=production (sets secure to true)
+// - FORCE_SECURE_COOKIES=true (forces secure to true)
+const isProduction = process.env.NODE_ENV === 'production';
+const forceSecure = process.env.FORCE_SECURE_COOKIES === 'true';
+// Default to true for production (HTTPS sites require secure cookies)
+const useSecureCookies = isProduction || forceSecure || process.env.USE_SECURE_COOKIES !== 'false';
+
+// Session configuration - MUST be before routes
+app.use(session({
+    secret: process.env.SESSION_SECRET || 'blw-ireland-zone-secret-key-change-in-production',
+    resave: true, // Set to true to help with session persistence
+    saveUninitialized: false,
+    cookie: { 
+        secure: useSecureCookies, // HTTPS only - REQUIRED for HTTPS sites
+        httpOnly: true, // Prevent XSS attacks
+        sameSite: 'lax', // CSRF protection - works for same-site requests
+        maxAge: 24 * 60 * 60 * 1000, // 24 hours
+        domain: process.env.COOKIE_DOMAIN || undefined // Allow setting custom domain if needed
+    },
+    name: 'blw-admin-session' // Custom session name to avoid conflicts
+}));
 
 // CORS configuration for API routes
 app.use('/api', (req, res, next) => {
@@ -21,6 +49,9 @@ app.use('/api', (req, res, next) => {
     res.setHeader('Access-Control-Allow-Credentials', 'true');
     if (origin) {
         res.setHeader('Access-Control-Allow-Origin', origin);
+    } else {
+        // If no origin header, allow the request origin
+        res.setHeader('Access-Control-Allow-Origin', req.headers.referer ? new URL(req.headers.referer).origin : '*');
     }
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
@@ -34,20 +65,6 @@ app.use('/api', (req, res, next) => {
 app.use(express.static('.')); // Serve static files
 app.use('/admin', express.static('admin')); // Serve admin static files
 app.use('/uploads', express.static('uploads')); // Serve uploaded images
-
-// Session configuration
-app.use(session({
-    secret: process.env.SESSION_SECRET || 'blw-ireland-zone-secret-key-change-in-production',
-    resave: false,
-    saveUninitialized: false,
-    cookie: { 
-        secure: process.env.NODE_ENV === 'production' || process.env.FORCE_SECURE_COOKIES === 'true', // HTTPS only in production
-        httpOnly: true, // Prevent XSS attacks
-        sameSite: 'lax', // CSRF protection - works for most cases
-        maxAge: 24 * 60 * 60 * 1000, // 24 hours
-        domain: process.env.COOKIE_DOMAIN || undefined // Allow setting custom domain if needed
-    }
-}));
 
 // File upload configuration
 const storage = multer.diskStorage({
@@ -170,9 +187,27 @@ async function initializeData() {
 
 // Authentication middleware
 function requireAuth(req, res, next) {
+    // Debug logging for production issues
+    if (process.env.DEBUG_AUTH === 'true') {
+        console.log('Auth check:', {
+            hasSession: !!req.session,
+            authenticated: !!(req.session && req.session.authenticated),
+            sessionId: req.sessionID,
+            cookies: req.headers.cookie
+        });
+    }
+    
     if (req.session && req.session.authenticated) {
         return next();
     }
+    
+    // Set CORS headers even for unauthorized responses
+    const origin = req.headers.origin;
+    if (origin) {
+        res.setHeader('Access-Control-Allow-Origin', origin);
+    }
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    
     res.status(401).json({ error: 'Unauthorized' });
 }
 
@@ -209,15 +244,22 @@ app.post('/api/admin/login', async (req, res) => {
         const isValid = await bcrypt.compare(password, config.adminPassword);
         if (isValid) {
             req.session.authenticated = true;
-            // Explicitly save session to ensure cookie is set
             req.session.save((err) => {
                 if (err) {
                     console.error('Session save error:', err);
                     return res.status(500).json({ error: 'Session error' });
                 }
-                // Set additional headers to help with cookie issues
+                // Set CORS headers
+                const origin = req.headers.origin;
+                if (origin) {
+                    res.setHeader('Access-Control-Allow-Origin', origin);
+                }
                 res.setHeader('Access-Control-Allow-Credentials', 'true');
-                res.json({ success: true });
+                
+                // Ensure cookie is set by touching the session
+                req.session.touch();
+                
+                res.json({ success: true, sessionId: req.sessionID });
             });
         } else {
             res.status(401).json({ error: 'Invalid password' });
@@ -494,6 +536,15 @@ if (process.env.NODE_ENV !== 'test' && require.main === module) {
             console.log(`\n🔐 Admin Portal Server running on http://0.0.0.0:${PORT}`);
             console.log(`📊 Admin Dashboard: http://0.0.0.0:${PORT}/admin`);
             console.log(`\nDefault password: admin\n`);
+            
+            // Warn if secure cookies aren't enabled (required for HTTPS sites)
+            if (!useSecureCookies) {
+                console.warn('⚠️  WARNING: Secure cookies are disabled. For HTTPS production sites,');
+                console.warn('   set NODE_ENV=production or FORCE_SECURE_COOKIES=true');
+                console.warn('   Otherwise, session cookies may not work on HTTPS!\n');
+            } else {
+                console.log('✓ Secure cookies enabled (required for HTTPS)\n');
+            }
         });
     });
 }

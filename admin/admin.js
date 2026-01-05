@@ -6,7 +6,9 @@ let currentEventId = null;
 // Check authentication on load
 async function checkAuth() {
     try {
-        const response = await fetch(`${API_BASE}/admin/check-auth`);
+        const response = await fetch(`${API_BASE}/admin/check-auth`, {
+            credentials: 'include' // Include cookies for session authentication
+        });
         const data = await response.json();
         if (data.authenticated) {
             showDashboard();
