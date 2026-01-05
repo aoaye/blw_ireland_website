@@ -149,21 +149,34 @@
                     <h3>Upload Images</h3>
                     <form id="image-upload-form" enctype="multipart/form-data">
                         <div class="form-group">
-                            <label for="image-file">Select Image</label>
+                            <label for="image-file">Select Image(s)</label>
                             <input type="file" id="image-file" accept="image/*" required>
+                            <small id="file-hint">For Hero Background, you can select multiple images</small>
                         </div>
                         <div class="form-group">
                             <label for="image-purpose">Image Purpose</label>
                             <select id="image-purpose">
-                                <option value="hero-background">Hero Background</option>
+                                <option value="hero-background">Hero Background (Slideshow)</option>
                                 <option value="group-a">Group A Image</option>
                                 <option value="group-b">Group B Image</option>
                                 <option value="group-c">Group C Image</option>
                                 <option value="other">Other</option>
                             </select>
                         </div>
-                        <button type="submit" class="btn btn-primary">Upload Image</button>
+                        <button type="submit" class="btn btn-primary">Upload Image(s)</button>
                     </form>
+                </div>
+                <div id="hero-background-preview" class="hero-preview-section" style="display: none;">
+                    <h3>Hero Background Slideshow Preview</h3>
+                    <div class="hero-slideshow-container">
+                        <div id="hero-slideshow" class="hero-slideshow"></div>
+                        <div class="hero-slideshow-controls">
+                            <button id="prev-hero-slide" class="btn btn-secondary btn-small">Previous</button>
+                            <span id="hero-slide-counter"></span>
+                            <button id="next-hero-slide" class="btn btn-secondary btn-small">Next</button>
+                            <button id="remove-hero-image" class="btn btn-danger btn-small">Remove Current</button>
+                        </div>
+                    </div>
                 </div>
                 <div id="uploaded-images" class="uploaded-images"></div>
             </section>

@@ -484,6 +484,70 @@ body {
     width: 100%;
 }
 
+/* Hero Background Slideshow Preview */
+.hero-preview-section {
+    background: var(--white);
+    padding: 2rem;
+    border-radius: 10px;
+    box-shadow: var(--shadow);
+    margin: 2rem 0;
+}
+
+.hero-preview-section h3 {
+    color: var(--primary);
+    margin-bottom: 1.5rem;
+}
+
+.hero-slideshow-container {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.hero-slideshow {
+    background: var(--light);
+    border-radius: 5px;
+    padding: 1rem;
+    min-height: 300px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.hero-slideshow img {
+    max-width: 100%;
+    max-height: 400px;
+    object-fit: contain;
+    border-radius: 5px;
+}
+
+.hero-slideshow-controls {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.hero-slideshow-controls #hero-slide-counter {
+    font-weight: 600;
+    color: var(--primary);
+    min-width: 80px;
+    text-align: center;
+}
+
+.hero-slideshow-controls button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+#file-hint {
+    display: block;
+    margin-top: 0.25rem;
+    color: #666;
+    font-size: 0.875rem;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
     .admin-nav {

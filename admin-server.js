@@ -13,6 +13,24 @@ const PORT = process.env.PORT || 8080;
 // Middleware
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
+
+// CORS configuration for API routes
+app.use('/api', (req, res, next) => {
+    const origin = req.headers.origin;
+    // Allow credentials for same-origin and configured origins
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    if (origin) {
+        res.setHeader('Access-Control-Allow-Origin', origin);
+    }
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    
+    if (req.method === 'OPTIONS') {
+        return res.sendStatus(200);
+    }
+    next();
+});
+
 app.use(express.static('.')); // Serve static files
 app.use('/admin', express.static('admin')); // Serve admin static files
 app.use('/uploads', express.static('uploads')); // Serve uploaded images
@@ -23,10 +41,11 @@ app.use(session({
     resave: false,
     saveUninitialized: false,
     cookie: { 
-        secure: process.env.NODE_ENV === 'production', // HTTPS only in production
+        secure: process.env.NODE_ENV === 'production' || process.env.FORCE_SECURE_COOKIES === 'true', // HTTPS only in production
         httpOnly: true, // Prevent XSS attacks
-        sameSite: 'lax', // CSRF protection
-        maxAge: 24 * 60 * 60 * 1000 // 24 hours
+        sameSite: 'lax', // CSRF protection - works for most cases
+        maxAge: 24 * 60 * 60 * 1000, // 24 hours
+        domain: process.env.COOKIE_DOMAIN || undefined // Allow setting custom domain if needed
     }
 }));
 
@@ -79,12 +98,24 @@ async function initializeData() {
         // Initialize config file
         try {
             await fs.access(CONFIG_FILE);
+            // Migrate old heroBackground to heroBackgrounds array if needed
+            const config = await readJSON(CONFIG_FILE);
+            if (config && config.heroBackground && !config.heroBackgrounds) {
+                // Migrate single image to array
+                config.heroBackgrounds = [config.heroBackground];
+                delete config.heroBackground;
+                await writeJSON(CONFIG_FILE, config);
+            } else if (config && !config.heroBackgrounds) {
+                // Initialize empty array if neither exists
+                config.heroBackgrounds = [];
+                await writeJSON(CONFIG_FILE, config);
+            }
         } catch {
             const defaultConfig = {
                 adminPassword: await bcrypt.hash('admin', 10),
                 siteTitle: 'BLW Ireland Zone',
                 tagline: 'Making An Impact; In universities across the nation and beyond...',
-                heroBackground: null,
+                heroBackgrounds: [],
                 instagramAutoFetch: true
             };
             await fs.writeFile(CONFIG_FILE, JSON.stringify(defaultConfig, null, 2));
@@ -184,6 +215,8 @@ app.post('/api/admin/login', async (req, res) => {
                     console.error('Session save error:', err);
                     return res.status(500).json({ error: 'Session error' });
                 }
+                // Set additional headers to help with cookie issues
+                res.setHeader('Access-Control-Allow-Credentials', 'true');
                 res.json({ success: true });
             });
         } else {
@@ -210,6 +243,20 @@ app.get('/api/config', async (req, res) => {
     const config = await readJSON(CONFIG_FILE);
     const safeConfig = { ...config };
     delete safeConfig.adminPassword; // Never send password hash
+    
+    // Migrate heroBackground to heroBackgrounds if needed (backward compatibility)
+    if (safeConfig.heroBackground && !safeConfig.heroBackgrounds) {
+        safeConfig.heroBackgrounds = [safeConfig.heroBackground];
+        delete safeConfig.heroBackground;
+        // Save migrated config
+        const fullConfig = await readJSON(CONFIG_FILE);
+        fullConfig.heroBackgrounds = [fullConfig.heroBackground];
+        delete fullConfig.heroBackground;
+        await writeJSON(CONFIG_FILE, fullConfig);
+    } else if (!safeConfig.heroBackgrounds) {
+        safeConfig.heroBackgrounds = [];
+    }
+    
     res.json(safeConfig);
 });
 
@@ -386,6 +433,14 @@ app.delete('/api/upload/:filename', requireAuth, async (req, res) => {
         let inUse = false;
         let usedIn = [];
         
+        // Check heroBackgrounds array (new format)
+        if (config && config.heroBackgrounds && Array.isArray(config.heroBackgrounds)) {
+            if (config.heroBackgrounds.includes(imageUrl)) {
+                inUse = true;
+                usedIn.push('Hero Background');
+            }
+        }
+        // Check old heroBackground format for backward compatibility
         if (config && config.heroBackground === imageUrl) {
             inUse = true;
             usedIn.push('Hero Background');

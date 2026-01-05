@@ -150,25 +150,33 @@ async function updateSiteContent() {
         heroTagline.textContent = config.tagline;
     }
     
-    // Update hero background image
+    // Update hero background slideshow
     const heroSection = document.querySelector('.hero');
     if (heroSection) {
-        if (config.heroBackground) {
-            // Use current origin in production, localhost in development
-            const imageUrl = window.location.origin.includes('localhost')
-                ? `http://localhost:8080${config.heroBackground}`
-                : config.heroBackground;
-            // Set background image (overlay gradient is handled by CSS ::before)
-            heroSection.style.backgroundImage = `url(${imageUrl})`;
-            heroSection.style.backgroundSize = 'cover';
-            heroSection.style.backgroundPosition = 'center';
-            heroSection.style.backgroundRepeat = 'no-repeat';
+        // Support both new array format and old single image format
+        const heroImages = config.heroBackgrounds || (config.heroBackground ? [config.heroBackground] : []);
+        
+        if (heroImages.length > 0) {
+            // Prepare image URLs with proper origin
+            const imageUrls = heroImages.map(img => {
+                return window.location.origin.includes('localhost')
+                    ? `http://localhost:8080${img}`
+                    : img;
+            });
+            
+            // Initialize slideshow
+            initHeroSlideshow(heroSection, imageUrls);
         } else {
-            // Reset to gradient if no background image
+            // Reset to gradient if no background images
             heroSection.style.backgroundImage = 'linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%)';
             heroSection.style.backgroundSize = '';
             heroSection.style.backgroundPosition = '';
             heroSection.style.backgroundRepeat = '';
+            // Clear any existing slideshow
+            if (heroSection.dataset.slideshowInterval) {
+                clearInterval(parseInt(heroSection.dataset.slideshowInterval));
+                delete heroSection.dataset.slideshowInterval;
+            }
         }
     }
     
@@ -178,16 +186,54 @@ async function updateSiteContent() {
         aboutTagline.textContent = config.tagline;
     }
     
-    // Update about page hero background image (if using same image as homepage)
+    // Update about page hero background slideshow (if using same images as homepage)
     const aboutHero = document.querySelector('.about-hero');
-    if (aboutHero && config.heroBackground) {
-        const imageUrl = window.location.origin.includes('localhost')
-            ? `http://localhost:8080${config.heroBackground}`
-            : config.heroBackground;
-        aboutHero.style.backgroundImage = `url(${imageUrl})`;
-        aboutHero.style.backgroundSize = 'cover';
-        aboutHero.style.backgroundPosition = 'center';
-        aboutHero.style.backgroundRepeat = 'no-repeat';
+    if (aboutHero) {
+        const heroImages = config.heroBackgrounds || (config.heroBackground ? [config.heroBackground] : []);
+        if (heroImages.length > 0) {
+            const imageUrls = heroImages.map(img => {
+                return window.location.origin.includes('localhost')
+                    ? `http://localhost:8080${img}`
+                    : img;
+            });
+            initHeroSlideshow(aboutHero, imageUrls);
+        }
+    }
+}
+
+// Initialize hero background slideshow
+function initHeroSlideshow(element, imageUrls) {
+    if (!imageUrls || imageUrls.length === 0) return;
+    
+    let currentIndex = 0;
+    
+    // Function to change background image
+    const changeBackground = () => {
+        const imageUrl = imageUrls[currentIndex];
+        element.style.backgroundImage = `url(${imageUrl})`;
+        element.style.backgroundSize = 'cover';
+        element.style.backgroundPosition = 'center';
+        element.style.backgroundRepeat = 'no-repeat';
+        element.style.transition = 'background-image 1s ease-in-out';
+    };
+    
+    // Set initial image
+    changeBackground();
+    
+    // If multiple images, create slideshow
+    if (imageUrls.length > 1) {
+        // Clear any existing interval
+        if (element.dataset.slideshowInterval) {
+            clearInterval(parseInt(element.dataset.slideshowInterval));
+        }
+        
+        // Change image every 5 seconds
+        const intervalId = setInterval(() => {
+            currentIndex = (currentIndex + 1) % imageUrls.length;
+            changeBackground();
+        }, 5000);
+        
+        element.dataset.slideshowInterval = intervalId.toString();
     }
 }
 

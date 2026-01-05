@@ -82,7 +82,10 @@ function showSection(section) {
     // Load section-specific data
     if (section === 'events') loadEvents();
     if (section === 'zone-structure') loadZoneStructure();
-    if (section === 'images') loadImages();
+    if (section === 'images') {
+        loadImages();
+        loadHeroBackgroundPreview();
+    }
 }
 
 // Load dashboard data
@@ -539,43 +542,78 @@ window.uploadGroupImage = async (groupKey, input) => {
 };
 
 // Image Management
+// Update file input to allow multiple files for hero background
+document.getElementById('image-purpose').addEventListener('change', (e) => {
+    const fileInput = document.getElementById('image-file');
+    const fileHint = document.getElementById('file-hint');
+    if (e.target.value === 'hero-background') {
+        fileInput.setAttribute('multiple', 'multiple');
+        fileInput.setAttribute('accept', 'image/*');
+        if (fileHint) {
+            fileHint.textContent = 'For Hero Background, you can select multiple images for the slideshow';
+        }
+    } else {
+        fileInput.removeAttribute('multiple');
+        if (fileHint) {
+            fileHint.textContent = '';
+        }
+    }
+});
+
 document.getElementById('image-upload-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const fileInput = document.getElementById('image-file');
-    const file = fileInput.files[0];
+    const files = fileInput.files;
     const purpose = document.getElementById('image-purpose').value;
     
-    if (!file) {
+    if (!files || files.length === 0) {
         alert('Please select an image file to upload');
         return;
     }
     
-    const formData = new FormData();
-    formData.append('image', file);
+    // For hero background, allow multiple files
+    const isHeroBackground = purpose === 'hero-background';
+    const filesToUpload = isHeroBackground ? Array.from(files) : [files[0]];
     
     try {
-        const response = await fetch(`${API_BASE}/upload`, {
-            method: 'POST',
-            credentials: 'include', // Include cookies for session authentication
-            body: formData
-        });
+        const uploadedUrls = [];
         
-        if (!response.ok) {
-            const errorData = await response.json().catch(() => ({ error: 'Upload failed' }));
-            throw new Error(errorData.error || `Upload failed with status ${response.status}`);
+        // Upload all files
+        for (const file of filesToUpload) {
+            const formData = new FormData();
+            formData.append('image', file);
+            
+            const response = await fetch(`${API_BASE}/upload`, {
+                method: 'POST',
+                credentials: 'include', // Include cookies for session authentication
+                body: formData
+            });
+            
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({ error: 'Upload failed' }));
+                throw new Error(errorData.error || `Upload failed with status ${response.status}`);
+            }
+            
+            const data = await response.json();
+            uploadedUrls.push(data.url);
         }
         
-        const data = await response.json();
-        
-        // Apply image to selected purpose
+        // Apply images to selected purpose
         if (purpose !== 'other') {
-            await applyImageToPurpose(data.url, purpose);
+            if (isHeroBackground) {
+                // Add all uploaded images to hero background slideshow
+                await applyImagesToPurpose(uploadedUrls, purpose);
+            } else {
+                // For other purposes, use the first image
+                await applyImageToPurpose(uploadedUrls[0], purpose);
+            }
         }
         
         // Show success message
         const successMsg = document.createElement('div');
         successMsg.className = 'upload-success-message';
-        successMsg.textContent = `Image uploaded successfully! ${purpose !== 'other' ? `Applied to ${purpose.replace('-', ' ')}.` : ''}`;
+        const count = uploadedUrls.length;
+        successMsg.textContent = `${count} image${count > 1 ? 's' : ''} uploaded successfully! ${purpose !== 'other' ? `Applied to ${purpose.replace('-', ' ')}.` : ''}`;
         successMsg.style.cssText = 'background: var(--success); color: white; padding: 1rem; border-radius: 5px; margin: 1rem 0;';
         const form = document.getElementById('image-upload-form');
         form.parentNode.insertBefore(successMsg, form.nextSibling);
@@ -584,6 +622,9 @@ document.getElementById('image-upload-form').addEventListener('submit', async (e
         
         document.getElementById('image-upload-form').reset();
         loadImages();
+        if (purpose === 'hero-background') {
+            loadHeroBackgroundPreview();
+        }
     } catch (error) {
         console.error('Upload error:', error);
         alert(`Failed to upload image: ${error.message || 'Unknown error'}`);
@@ -594,11 +635,19 @@ async function applyImageToPurpose(imageUrl, purpose) {
     try {
         if (purpose === 'hero-background') {
             const config = await fetch(`${API_BASE}/config`).then(r => r.json());
+            // Ensure heroBackgrounds is an array
+            if (!config.heroBackgrounds) {
+                config.heroBackgrounds = config.heroBackground ? [config.heroBackground] : [];
+            }
+            // Add image if not already in array
+            if (!config.heroBackgrounds.includes(imageUrl)) {
+                config.heroBackgrounds.push(imageUrl);
+            }
             await fetch(`${API_BASE}/config`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
-                body: JSON.stringify({ ...config, heroBackground: imageUrl })
+                body: JSON.stringify({ ...config, heroBackgrounds: config.heroBackgrounds })
             });
         } else if (purpose.startsWith('group-')) {
             const groupKey = purpose === 'group-a' ? 'groupA' : purpose === 'group-b' ? 'groupB' : 'groupC';
@@ -613,6 +662,32 @@ async function applyImageToPurpose(imageUrl, purpose) {
         }
     } catch (error) {
         console.error('Error applying image to purpose:', error);
+    }
+}
+
+async function applyImagesToPurpose(imageUrls, purpose) {
+    try {
+        if (purpose === 'hero-background') {
+            const config = await fetch(`${API_BASE}/config`).then(r => r.json());
+            // Ensure heroBackgrounds is an array
+            if (!config.heroBackgrounds) {
+                config.heroBackgrounds = config.heroBackground ? [config.heroBackground] : [];
+            }
+            // Add all new images that aren't already in the array
+            imageUrls.forEach(url => {
+                if (!config.heroBackgrounds.includes(url)) {
+                    config.heroBackgrounds.push(url);
+                }
+            });
+            await fetch(`${API_BASE}/config`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ ...config, heroBackgrounds: config.heroBackgrounds })
+            });
+        }
+    } catch (error) {
+        console.error('Error applying images to purpose:', error);
     }
 }
 
@@ -646,6 +721,11 @@ async function loadImages() {
             const imageUrl = image.url;
             let usedIn = [];
             
+            // Check heroBackgrounds array (new format)
+            if (config.heroBackgrounds && Array.isArray(config.heroBackgrounds) && config.heroBackgrounds.includes(imageUrl)) {
+                usedIn.push('Hero Background Slideshow');
+            }
+            // Check old heroBackground format for backward compatibility
             if (config.heroBackground === imageUrl) {
                 usedIn.push('Hero Background');
             }
@@ -697,11 +777,131 @@ window.deleteImage = async (filename) => {
         
         alert('Image deleted successfully!');
         loadImages();
+        loadHeroBackgroundPreview();
     } catch (error) {
         console.error('Delete error:', error);
         alert(`Failed to delete image: ${error.message || 'Unknown error'}`);
     }
 };
+
+// Hero Background Slideshow Preview
+let currentHeroSlideIndex = 0;
+let heroBackgroundImages = [];
+
+async function loadHeroBackgroundPreview() {
+    try {
+        const config = await fetch(`${API_BASE}/config`).then(r => r.json());
+        const heroBackgrounds = config.heroBackgrounds || (config.heroBackground ? [config.heroBackground] : []);
+        
+        const previewSection = document.getElementById('hero-background-preview');
+        const slideshow = document.getElementById('hero-slideshow');
+        
+        if (heroBackgrounds.length === 0) {
+            previewSection.style.display = 'none';
+            return;
+        }
+        
+        previewSection.style.display = 'block';
+        heroBackgroundImages = heroBackgrounds;
+        currentHeroSlideIndex = 0;
+        
+        updateHeroSlideshow();
+    } catch (error) {
+        console.error('Error loading hero background preview:', error);
+    }
+}
+
+function updateHeroSlideshow() {
+    const slideshow = document.getElementById('hero-slideshow');
+    const counter = document.getElementById('hero-slide-counter');
+    
+    if (heroBackgroundImages.length === 0) {
+        slideshow.innerHTML = '<p style="text-align: center; padding: 2rem;">No hero background images</p>';
+        counter.textContent = '0 / 0';
+        return;
+    }
+    
+    const currentImage = heroBackgroundImages[currentHeroSlideIndex];
+    slideshow.innerHTML = `
+        <img src="${currentImage}" alt="Hero Background ${currentHeroSlideIndex + 1}" style="width: 100%; max-height: 400px; object-fit: contain; border-radius: 5px;">
+    `;
+    counter.textContent = `${currentHeroSlideIndex + 1} / ${heroBackgroundImages.length}`;
+    
+    // Update button states
+    document.getElementById('prev-hero-slide').disabled = currentHeroSlideIndex === 0;
+    document.getElementById('next-hero-slide').disabled = currentHeroSlideIndex === heroBackgroundImages.length - 1;
+}
+
+// Hero slideshow navigation - set up event listeners when DOM is ready
+function setupHeroSlideshowListeners() {
+    const prevBtn = document.getElementById('prev-hero-slide');
+    const nextBtn = document.getElementById('next-hero-slide');
+    const removeBtn = document.getElementById('remove-hero-image');
+    
+    if (prevBtn) {
+        prevBtn.addEventListener('click', () => {
+            if (currentHeroSlideIndex > 0) {
+                currentHeroSlideIndex--;
+                updateHeroSlideshow();
+            }
+        });
+    }
+    
+    if (nextBtn) {
+        nextBtn.addEventListener('click', () => {
+            if (currentHeroSlideIndex < heroBackgroundImages.length - 1) {
+                currentHeroSlideIndex++;
+                updateHeroSlideshow();
+            }
+        });
+    }
+    
+    if (removeBtn) {
+        removeBtn.addEventListener('click', async () => {
+            if (heroBackgroundImages.length === 0) return;
+            
+            const imageUrl = heroBackgroundImages[currentHeroSlideIndex];
+            if (!confirm(`Remove this image from the hero background slideshow?`)) return;
+            
+            try {
+                const config = await fetch(`${API_BASE}/config`).then(r => r.json());
+                if (!config.heroBackgrounds) {
+                    config.heroBackgrounds = config.heroBackground ? [config.heroBackground] : [];
+                }
+                
+                config.heroBackgrounds = config.heroBackgrounds.filter(url => url !== imageUrl);
+                
+                await fetch(`${API_BASE}/config`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({ ...config, heroBackgrounds: config.heroBackgrounds })
+                });
+                
+                // Update local array
+                heroBackgroundImages = config.heroBackgrounds;
+                
+                // Adjust index if needed
+                if (currentHeroSlideIndex >= heroBackgroundImages.length) {
+                    currentHeroSlideIndex = Math.max(0, heroBackgroundImages.length - 1);
+                }
+                
+                updateHeroSlideshow();
+                loadImages(); // Refresh image list
+            } catch (error) {
+                console.error('Error removing hero image:', error);
+                alert('Failed to remove image from slideshow');
+            }
+        });
+    }
+}
+
+// Initialize hero slideshow listeners when DOM is ready
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', setupHeroSlideshowListeners);
+} else {
+    setupHeroSlideshowListeners();
+}
 
 // Settings
 document.getElementById('site-config-form').addEventListener('submit', async (e) => {
