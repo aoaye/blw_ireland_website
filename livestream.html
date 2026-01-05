@@ -87,90 +87,120 @@
         <section class="stream-section">
             <div class="container">
                 <h2>Live TV</h2>
-                <div class="stream-container">
-                    <div class="video-wrapper">
-                        <div class="rtmp-config" style="display: none;">
-                            <h4>Stream Configuration</h4>
-                            <div class="rtmp-input-group">
-                                <label for="rtmp-server-url">Server URL:</label>
-                                <input type="text" id="rtmp-server-url" placeholder="rtmp://your-server.com:1935/live" value="">
-                                <small>Server URL without the stream key (e.g., rtmp://server.com:1935/live)</small>
-                            </div>
-                            <div class="rtmp-input-group">
-                                <label for="rtmp-stream-key">Stream Key:</label>
-                                <input type="password" id="rtmp-stream-key" placeholder="your-stream-key" value="">
-                                <small>Your RTMP stream key (required for RTMP streams)</small>
-                            </div>
-                            <div class="rtmp-input-group">
-                                <label for="stream-type">Stream Type:</label>
-                                <select id="stream-type" style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 5px; font-size: 1rem;">
-                                    <option value="rtmp">RTMP (via Video.js)</option>
-                                    <option value="hls">HLS (if server converts RTMP to HLS)</option>
-                                    <option value="flv">FLV (via flv.js)</option>
-                                </select>
-                                <small>For HLS/FLV, you may need to enter the full playback URL manually</small>
-                            </div>
-                            <button class="rtmp-button" onclick="loadStream()">Load Stream</button>
-                        </div>
-                        <div class="stream-status" id="stream-status" style="display: none;">
-                            <span class="status-indicator"></span>
-                            <span class="status-text">Live</span>
-                        </div>
-                        <!-- Video.js Player -->
-                        <video
-                            id="video-player"
-                            class="video-js vjs-default-skin"
-                            controls
-                            preload="auto"
-                            width="100%"
-                            height="500"
-                            data-setup='{}'
-                            style="display: none;">
-                            <p class="vjs-no-js">
-                                To view this video please enable JavaScript, and consider upgrading to a web browser that
-                                <a href="https://videojs.com/html5-video-support/" target="_blank">supports HTML5 video</a>.
-                            </p>
-                        </video>
-                        <!-- Fallback message -->
-                        <div id="stream-placeholder" class="video-placeholder">
-                            <div class="video-content">
-                                <p>Service will begin shortly</p>
-                                <p class="stream-note">Please check back when the service starts</p>
-                            </div>
-                        </div>
+                
+                <!-- Service Times - Slimmer, squatter profile at top -->
+                <div class="service-times-compact">
+                    <div class="service-time-item">
+                        <h4>Sunday Service</h4>
+                        <p class="time-info">2:00 PM</p>
                     </div>
-                    <div class="stream-info">
-                        <h3>Service Times</h3>
-                        <div class="info-card">
-                            <h4>Sunday Service</h4>
-                            <p>Join us every Sunday</p>
-                            <p class="time-info">2:00 PM</p>
-                        </div>
-                        <div class="info-card">
-                            <h4>Wednesday Service</h4>
-                            <p>Midweek service</p>
-                            <p class="time-info">7:00 PM</p>
-                        </div>
+                    <div class="service-time-item">
+                        <h4>Wednesday Service</h4>
+                        <p class="time-info">7:00 PM</p>
                     </div>
                 </div>
-            </div>
-        </section>
 
-        <section class="chat-section">
-            <div class="container">
-                <h3>Live Chat</h3>
-                <div class="chat-container">
-                    <div class="chat-messages">
-                        <div class="chat-message">
-                            <span class="chat-user">Welcome:</span>
-                            <span class="chat-text">Thank you for joining us! We're glad you're here.</span>
+                <div class="stream-container">
+                    <div class="video-section">
+                        <div class="video-wrapper">
+                            <div class="rtmp-config" style="display: none;">
+                                <h4>Stream Configuration</h4>
+                                <div class="rtmp-input-group">
+                                    <label for="rtmp-server-url">Server URL:</label>
+                                    <input type="text" id="rtmp-server-url" placeholder="rtmp://your-server.com:1935/live" value="">
+                                    <small>Server URL without the stream key (e.g., rtmp://server.com:1935/live)</small>
+                                </div>
+                                <div class="rtmp-input-group">
+                                    <label for="rtmp-stream-key">Stream Key:</label>
+                                    <input type="password" id="rtmp-stream-key" placeholder="your-stream-key" value="">
+                                    <small>Your RTMP stream key (required for RTMP streams)</small>
+                                </div>
+                                <div class="rtmp-input-group">
+                                    <label for="stream-type">Stream Type:</label>
+                                    <select id="stream-type" style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 5px; font-size: 1rem;">
+                                        <option value="rtmp">RTMP (via Video.js)</option>
+                                        <option value="hls">HLS (if server converts RTMP to HLS)</option>
+                                        <option value="flv">FLV (via flv.js)</option>
+                                    </select>
+                                    <small>For HLS/FLV, you may need to enter the full playback URL manually</small>
+                                </div>
+                                <button class="rtmp-button" onclick="loadStream()">Load Stream</button>
+                            </div>
+                            <div class="stream-status" id="stream-status" style="display: none;">
+                                <span class="status-indicator"></span>
+                                <span class="status-text">LIVE</span>
+                            </div>
+                            <!-- Video.js Player -->
+                            <video
+                                id="video-player"
+                                class="video-js vjs-default-skin"
+                                controls
+                                preload="auto"
+                                width="100%"
+                                height="500"
+                                data-setup='{}'
+                                style="display: none;">
+                                <p class="vjs-no-js">
+                                    To view this video please enable JavaScript, and consider upgrading to a web browser that
+                                    <a href="https://videojs.com/html5-video-support/" target="_blank">supports HTML5 video</a>.
+                                </p>
+                            </video>
+                            <!-- Fallback message -->
+                            <div id="stream-placeholder" class="video-placeholder">
+                                <div class="video-content">
+                                    <p>Service will begin shortly</p>
+                                    <p class="stream-note">Please check back when the service starts</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Comment Input Area -->
+                        <div class="comment-input-area">
+                            <input type="text" placeholder="Leave a comment..." class="comment-input" disabled>
+                            <button class="comment-send" disabled>
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <line x1="22" y1="2" x2="11" y2="13"></line>
+                                    <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                                </svg>
+                            </button>
                         </div>
                     </div>
-                    <div class="chat-input-container">
-                        <input type="text" placeholder="Type your message..." class="chat-input" disabled>
-                        <button class="chat-send" disabled>Send</button>
+
+                    <!-- Live Chat Section -->
+                    <div class="chat-section-inline">
+                        <div class="chat-header">
+                            <h3>Live Chat</h3>
+                            <div class="viewer-count">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                    <circle cx="12" cy="12" r="3"></circle>
+                                </svg>
+                                <span id="viewer-count">0</span> watching
+                            </div>
+                        </div>
+                        <div class="chat-messages">
+                            <div class="chat-message">
+                                <span class="chat-user">Welcome:</span>
+                                <span class="chat-text">Thank you for joining us! We're glad you're here.</span>
+                            </div>
+                        </div>
+                        <div class="chat-input-container">
+                            <input type="text" placeholder="Type your message..." class="chat-input" disabled>
+                            <button class="chat-send" disabled>Send</button>
+                        </div>
+                        <p class="chat-note">Live chat will be available during services.</p>
                     </div>
-                    <p class="chat-note">Live chat will be available during services.</p>
+                </div>
+
+                <!-- Previous Livestreams Section -->
+                <div class="previous-streams-section">
+                    <h3>Previous Livestreams</h3>
+                    <div class="previous-streams-grid" id="previous-streams">
+                        <!-- Previous streams will be populated here -->
+                        <div class="stream-card-placeholder">
+                            <p>No previous streams available</p>
+                        </div>
+                    </div>
                 </div>
             </div>
         </section>

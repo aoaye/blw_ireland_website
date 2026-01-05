@@ -347,6 +347,24 @@ window.addEventListener('DOMContentLoaded', function() {
     });
 });
 
+// Update viewer count (placeholder - can be connected to actual analytics)
+function updateViewerCount() {
+    const viewerCountElement = document.getElementById('viewer-count');
+    if (viewerCountElement) {
+        // Placeholder: Random number between 50-500 for demo
+        // In production, this would fetch from your analytics/streaming service
+        const count = Math.floor(Math.random() * 450) + 50;
+        viewerCountElement.textContent = count.toLocaleString();
+    }
+}
+
+// Update viewer count on load and periodically
+window.addEventListener('DOMContentLoaded', function() {
+    updateViewerCount();
+    // Update every 30 seconds (simulate live updates)
+    setInterval(updateViewerCount, 30000);
+});
+
 // Cleanup on page unload
 window.addEventListener('beforeunload', function() {
     cleanupPlayers();
