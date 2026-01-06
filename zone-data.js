@@ -1,12 +1,12 @@
 // Zone Structure Data
-// Add your colleges to each group below
-// Format: "College Name"
+// Add your fellowships to each group below
+// Format: "Fellowship Name"
 
 const zoneData = {
     groupA: {
         name: "Group A - Mighty Army",
-        colleges: [
-            // Add colleges here, for example:
+        fellowships: [
+            // Add fellowships here, for example:
             "University College Dublin",
             "National College Ireland",
             "Maynooth University",
@@ -20,20 +20,20 @@ const zoneData = {
     },
     groupB: {
         name: "Group B - LimitBreakers",
-        colleges: [
+        fellowships: [
             "Dublin City University",
             "Dublin Business School",
             "TU Dublin, Grangegorman",
             
-            // Add colleges here
+            // Add fellowships here
         ]
     },
     groupC: {
         name: "Group C - Boundless Love",
-        colleges: [
+        fellowships: [
             "Trinity College Dublin",
             "Boundless Love Church",
-            // Add colleges here
+            // Add fellowships here
         ]
     }
 };
@@ -70,59 +70,59 @@ window.displayGroupImage = function(groupKey, imageUrl) {
     }
 };
 
-// Function to populate colleges in the dropdown
-function populateColleges() {
+// Function to populate fellowships in the dropdown
+function populateFellowships() {
     // Group A
-    const groupAColleges = document.querySelector('.group-dropdown:nth-of-type(1) .colleges-list');
-    if (groupAColleges && zoneData.groupA.colleges.length > 0) {
-        groupAColleges.innerHTML = '';
-        zoneData.groupA.colleges.forEach(college => {
-            const collegeItem = document.createElement('div');
-            collegeItem.className = 'college-item';
-            collegeItem.textContent = college;
-            groupAColleges.appendChild(collegeItem);
+    const groupAFellowships = document.querySelector('.group-dropdown:nth-of-type(1) .fellowships-list');
+    if (groupAFellowships && zoneData.groupA.fellowships.length > 0) {
+        groupAFellowships.innerHTML = '';
+        zoneData.groupA.fellowships.forEach(fellowship => {
+            const fellowshipItem = document.createElement('div');
+            fellowshipItem.className = 'fellowship-item';
+            fellowshipItem.textContent = fellowship;
+            groupAFellowships.appendChild(fellowshipItem);
         });
-    } else if (groupAColleges && zoneData.groupA.colleges.length === 0) {
-        groupAColleges.innerHTML = '<p class="college-placeholder">Colleges will be listed here</p>';
+    } else if (groupAFellowships && zoneData.groupA.fellowships.length === 0) {
+        groupAFellowships.innerHTML = '<p class="fellowship-placeholder">Fellowships will be listed here</p>';
     }
 
     // Group B
-    const groupBColleges = document.querySelector('.group-dropdown:nth-of-type(2) .colleges-list');
-    if (groupBColleges && zoneData.groupB.colleges.length > 0) {
-        groupBColleges.innerHTML = '';
-        zoneData.groupB.colleges.forEach(college => {
-            const collegeItem = document.createElement('div');
-            collegeItem.className = 'college-item';
-            collegeItem.textContent = college;
-            groupBColleges.appendChild(collegeItem);
+    const groupBFellowships = document.querySelector('.group-dropdown:nth-of-type(2) .fellowships-list');
+    if (groupBFellowships && zoneData.groupB.fellowships.length > 0) {
+        groupBFellowships.innerHTML = '';
+        zoneData.groupB.fellowships.forEach(fellowship => {
+            const fellowshipItem = document.createElement('div');
+            fellowshipItem.className = 'fellowship-item';
+            fellowshipItem.textContent = fellowship;
+            groupBFellowships.appendChild(fellowshipItem);
         });
-    } else if (groupBColleges && zoneData.groupB.colleges.length === 0) {
-        groupBColleges.innerHTML = '<p class="college-placeholder">Colleges will be listed here</p>';
+    } else if (groupBFellowships && zoneData.groupB.fellowships.length === 0) {
+        groupBFellowships.innerHTML = '<p class="fellowship-placeholder">Fellowships will be listed here</p>';
     }
 
     // Group C
-    const groupCColleges = document.querySelector('.group-dropdown:nth-of-type(3) .colleges-list');
-    if (groupCColleges && zoneData.groupC.colleges.length > 0) {
-        groupCColleges.innerHTML = '';
-        zoneData.groupC.colleges.forEach(college => {
-            const collegeItem = document.createElement('div');
-            collegeItem.className = 'college-item';
-            collegeItem.textContent = college;
-            groupCColleges.appendChild(collegeItem);
+    const groupCFellowships = document.querySelector('.group-dropdown:nth-of-type(3) .fellowships-list');
+    if (groupCFellowships && zoneData.groupC.fellowships.length > 0) {
+        groupCFellowships.innerHTML = '';
+        zoneData.groupC.fellowships.forEach(fellowship => {
+            const fellowshipItem = document.createElement('div');
+            fellowshipItem.className = 'fellowship-item';
+            fellowshipItem.textContent = fellowship;
+            groupCFellowships.appendChild(fellowshipItem);
         });
-    } else if (groupCColleges && zoneData.groupC.colleges.length === 0) {
-        groupCColleges.innerHTML = '<p class="college-placeholder">Colleges will be listed here</p>';
+    } else if (groupCFellowships && zoneData.groupC.fellowships.length === 0) {
+        groupCFellowships.innerHTML = '<p class="fellowship-placeholder">Fellowships will be listed here</p>';
     }
 }
 
-// Populate colleges and images when page loads
+// Populate fellowships and images when page loads
 document.addEventListener('DOMContentLoaded', async function() {
     // Try to load from API first
     const apiData = await loadZoneDataFromAPI();
     if (apiData) {
-        zoneData.groupA.colleges = apiData.groupA?.colleges || [];
-        zoneData.groupB.colleges = apiData.groupB?.colleges || [];
-        zoneData.groupC.colleges = apiData.groupC?.colleges || [];
+        zoneData.groupA.fellowships = apiData.groupA?.fellowships || [];
+        zoneData.groupB.fellowships = apiData.groupB?.fellowships || [];
+        zoneData.groupC.fellowships = apiData.groupC?.fellowships || [];
         
         // Update group images
         if (apiData.groupA?.image) {
@@ -138,6 +138,6 @@ document.addEventListener('DOMContentLoaded', async function() {
             displayGroupImage('groupC', apiData.groupC.image);
         }
     }
-    populateColleges();
+    populateFellowships();
 });
 

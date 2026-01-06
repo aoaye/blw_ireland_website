@@ -152,13 +152,212 @@ function showPlaceholder(container, placeholder) {
     hideYouTubeChat();
 }
 
+// Previous Streams Carousel
+let currentCarouselIndex = 0;
+let previousStreamsVideos = [];
+
+// Load previous streams
+async function loadPreviousStreams() {
+    const carouselTrack = document.getElementById('carousel-track');
+    const indicators = document.getElementById('carousel-indicators');
+    
+    if (!carouselTrack || !indicators) {
+        return;
+    }
+    
+    try {
+        const apiUrl = window.location.origin.includes('localhost')
+            ? 'http://localhost:8080/api/previous-streams'
+            : `${window.location.origin}/api/previous-streams`;
+        
+        const response = await fetch(apiUrl);
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+        
+        const data = await response.json();
+        previousStreamsVideos = (data.videos || []).filter(v => v.videoId || extractYouTubeVideoId(v.url || ''));
+        
+        if (previousStreamsVideos.length === 0) {
+            carouselTrack.innerHTML = `
+                <div class="stream-card-placeholder">
+                    <p>No previous streams available</p>
+                </div>
+            `;
+            indicators.innerHTML = '';
+            return;
+        }
+        
+        renderCarousel();
+        setupCarouselControls();
+    } catch (error) {
+        console.error('Error loading previous streams:', error);
+        carouselTrack.innerHTML = `
+            <div class="stream-card-placeholder">
+                <p>Unable to load previous streams</p>
+            </div>
+        `;
+        indicators.innerHTML = '';
+    }
+}
+
+// Render carousel
+function renderCarousel() {
+    const carouselTrack = document.getElementById('carousel-track');
+    const indicators = document.getElementById('carousel-indicators');
+    
+    if (!carouselTrack || !indicators) return;
+    
+    carouselTrack.innerHTML = previousStreamsVideos.map((video, index) => {
+        const videoId = video.videoId || extractYouTubeVideoId(video.url || '');
+        const thumbnail = `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`;
+        const title = video.title || 'Previous Livestream';
+        const date = video.date || '';
+        
+        return `
+            <div class="carousel-slide" data-index="${index}">
+                <div class="stream-card" onclick="openVideoModal('${videoId}', '${title.replace(/'/g, "\\'")}')">
+                    <div class="stream-card-thumbnail">
+                        <img src="${thumbnail}" alt="${title}" onerror="this.src='https://img.youtube.com/vi/${videoId}/mqdefault.jpg'">
+                        <div class="play-overlay">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M8 5v14l11-7z"/>
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="stream-card-info">
+                        <h4 class="stream-card-title">${title}</h4>
+                        ${date ? `<p class="stream-card-date" style="font-size: 0.85rem; color: var(--text-color-muted); margin-top: 0.5rem;">${date}</p>` : ''}
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+    
+    // Render indicators
+    indicators.innerHTML = previousStreamsVideos.map((_, index) => 
+        `<button class="carousel-indicator ${index === 0 ? 'active' : ''}" data-index="${index}" aria-label="Go to slide ${index + 1}"></button>`
+    ).join('');
+    
+    // Update carousel position
+    updateCarouselPosition();
+}
+
+// Setup carousel controls
+function setupCarouselControls() {
+    const prevBtn = document.getElementById('carousel-prev');
+    const nextBtn = document.getElementById('carousel-next');
+    const indicators = document.querySelectorAll('.carousel-indicator');
+    
+    if (prevBtn) {
+        prevBtn.addEventListener('click', () => {
+            if (currentCarouselIndex > 0) {
+                currentCarouselIndex--;
+            } else {
+                currentCarouselIndex = previousStreamsVideos.length - 1;
+            }
+            updateCarouselPosition();
+        });
+    }
+    
+    if (nextBtn) {
+        nextBtn.addEventListener('click', () => {
+            if (currentCarouselIndex < previousStreamsVideos.length - 1) {
+                currentCarouselIndex++;
+            } else {
+                currentCarouselIndex = 0;
+            }
+            updateCarouselPosition();
+        });
+    }
+    
+    indicators.forEach((indicator, index) => {
+        indicator.addEventListener('click', () => {
+            currentCarouselIndex = index;
+            updateCarouselPosition();
+        });
+    });
+    
+    // Auto-play carousel (optional - can be disabled)
+    // setInterval(() => {
+    //     if (currentCarouselIndex < previousStreamsVideos.length - 1) {
+    //         currentCarouselIndex++;
+    //     } else {
+    //         currentCarouselIndex = 0;
+    //     }
+    //     updateCarouselPosition();
+    // }, 5000);
+}
+
+// Update carousel position
+function updateCarouselPosition() {
+    const carouselTrack = document.getElementById('carousel-track');
+    const indicators = document.querySelectorAll('.carousel-indicator');
+    
+    if (!carouselTrack) return;
+    
+    const slideWidth = carouselTrack.querySelector('.carousel-slide')?.offsetWidth || 0;
+    const offset = -currentCarouselIndex * slideWidth;
+    carouselTrack.style.transform = `translateX(${offset}px)`;
+    
+    // Update indicators
+    indicators.forEach((indicator, index) => {
+        if (index === currentCarouselIndex) {
+            indicator.classList.add('active');
+        } else {
+            indicator.classList.remove('active');
+        }
+    });
+}
+
+// Open video modal
+window.openVideoModal = function(videoId, title) {
+    const modal = document.createElement('div');
+    modal.className = 'video-modal';
+    modal.innerHTML = `
+        <div class="video-modal-content">
+            <span class="video-modal-close">&times;</span>
+            <h3>${title}</h3>
+            <div class="video-modal-player">
+                <iframe 
+                    src="https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0&modestbranding=1" 
+                    frameborder="0" 
+                    allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
+                    allowfullscreen>
+                </iframe>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    document.body.style.overflow = 'hidden';
+    
+    const closeBtn = modal.querySelector('.video-modal-close');
+    closeBtn.addEventListener('click', () => {
+        document.body.removeChild(modal);
+        document.body.style.overflow = '';
+    });
+    
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            document.body.removeChild(modal);
+            document.body.style.overflow = '';
+        }
+    });
+};
+
 // Initialize when DOM is ready
 if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', loadStream);
+    document.addEventListener('DOMContentLoaded', () => {
+        loadStream();
+        loadPreviousStreams();
+    });
 } else {
     loadStream();
+    loadPreviousStreams();
 }
 
 // Periodically check for config updates (every 30 seconds)
 setInterval(loadStream, 30000);
+setInterval(loadPreviousStreams, 30000);
 

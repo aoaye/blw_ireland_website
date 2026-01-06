@@ -374,11 +374,11 @@ body {
     margin-bottom: 1rem;
 }
 
-.colleges-editor {
+.fellowships-editor {
     margin-top: 1.5rem;
 }
 
-.college-item {
+.fellowship-item {
     display: flex;
     align-items: center;
     gap: 1rem;
@@ -388,7 +388,7 @@ body {
     margin-bottom: 0.5rem;
 }
 
-.college-item input {
+.fellowship-item input {
     flex: 1;
 }
 

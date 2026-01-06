@@ -1,17 +1,17 @@
 {
   "groupA": {
     "name": "Group A - Mighty Army",
-    "colleges": [],
+    "fellowships": [],
     "image": null
   },
   "groupB": {
     "name": "Group B - LimitBreakers",
-    "colleges": [],
+    "fellowships": [],
     "image": null
   },
   "groupC": {
     "name": "Group C - Boundless Love",
-    "colleges": [],
+    "fellowships": [],
     "image": null
   }
 }

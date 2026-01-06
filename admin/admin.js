@@ -242,9 +242,251 @@ async function loadStreamConfig() {
         if (config.embeddedStreamUrl) {
             updateStreamPreview(config.embeddedStreamUrl);
         }
+        
+        // Load previous streams
+        await loadPreviousStreams();
     } catch (error) {
         console.error('Failed to load stream config:', error);
     }
+}
+
+// Previous Streams Management
+let previousStreamsData = { videos: [] };
+
+// Extract YouTube video ID from URL
+function extractVideoId(url) {
+    if (!url) return '';
+    let videoId = '';
+    if (url.includes('youtube.com/watch?v=')) {
+        videoId = url.split('v=')[1].split('&')[0];
+    } else if (url.includes('youtu.be/')) {
+        videoId = url.split('youtu.be/')[1].split('?')[0];
+    } else if (url.includes('youtube.com/embed/')) {
+        videoId = url.split('embed/')[1].split('?')[0];
+    } else if (url.length === 11 && /^[a-zA-Z0-9_-]+$/.test(url)) {
+        videoId = url;
+    }
+    return videoId;
+}
+
+// Load previous streams
+async function loadPreviousStreams() {
+    try {
+        const data = await fetch(`${API_BASE}/previous-streams`).then(r => r.json());
+        previousStreamsData = data || { videos: [] };
+        renderPreviousStreams();
+    } catch (error) {
+        console.error('Failed to load previous streams:', error);
+    }
+}
+
+// Render previous streams list
+function renderPreviousStreams() {
+    const listContainer = document.getElementById('previous-streams-list');
+    if (!listContainer) return;
+    
+    if (previousStreamsData.videos.length === 0) {
+        listContainer.innerHTML = '<p style="color: #666; font-style: italic;">No videos added yet. Click "Add Video" to get started.</p>';
+        return;
+    }
+    
+    listContainer.innerHTML = previousStreamsData.videos.map((video, index) => {
+        const videoId = extractVideoId(video.url || video.videoId || '');
+        const thumbnail = videoId ? `https://img.youtube.com/vi/${videoId}/mqdefault.jpg` : '';
+        const title = video.title || 'Untitled Video';
+        const date = video.date || '';
+        
+        return `
+            <div class="video-item" style="display: flex; align-items: center; gap: 1rem; padding: 1rem; background: var(--light-bg); border-radius: 5px; margin-bottom: 0.5rem;">
+                ${thumbnail ? `<img src="${thumbnail}" alt="${title}" style="width: 120px; height: 68px; object-fit: cover; border-radius: 4px;">` : '<div style="width: 120px; height: 68px; background: #ddd; border-radius: 4px;"></div>'}
+                <div style="flex: 1;">
+                    <h4 style="margin: 0 0 0.25rem 0; color: var(--text-color);">${title}</h4>
+                    <p style="margin: 0; color: #666; font-size: 0.9em;">${videoId ? `Video ID: ${videoId}` : 'Invalid URL'}</p>
+                    ${date ? `<p style="margin: 0.25rem 0 0 0; color: #666; font-size: 0.85em;">Date: ${date}</p>` : ''}
+                </div>
+                <div style="display: flex; gap: 0.5rem;">
+                    <button class="btn btn-secondary" onclick="editVideo(${index})" style="padding: 0.5rem 1rem; font-size: 0.9em;">Edit</button>
+                    <button class="btn btn-secondary" onclick="deleteVideo(${index})" style="padding: 0.5rem 1rem; font-size: 0.9em; background: #d32f2f;">Delete</button>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+// Add video button
+const addVideoBtn = document.getElementById('add-video-btn');
+if (addVideoBtn) {
+    addVideoBtn.addEventListener('click', () => {
+        openVideoModal();
+    });
+}
+
+// Video modal functions
+function openVideoModal(index = null) {
+    const modal = document.getElementById('video-modal');
+    const title = document.getElementById('video-modal-title');
+    const form = document.getElementById('video-form');
+    const videoIndex = document.getElementById('video-index');
+    const videoUrl = document.getElementById('video-url');
+    const videoTitle = document.getElementById('video-title');
+    const videoDate = document.getElementById('video-date');
+    
+    if (index !== null && previousStreamsData.videos[index]) {
+        const video = previousStreamsData.videos[index];
+        title.textContent = 'Edit Video';
+        videoIndex.value = index;
+        videoUrl.value = video.url || video.videoId || '';
+        videoTitle.value = video.title || '';
+        videoDate.value = video.date || '';
+    } else {
+        title.textContent = 'Add Video';
+        videoIndex.value = '';
+        videoUrl.value = '';
+        videoTitle.value = '';
+        videoDate.value = '';
+    }
+    
+    modal.style.display = 'block';
+}
+
+function closeVideoModal() {
+    const modal = document.getElementById('video-modal');
+    modal.style.display = 'none';
+}
+
+// Close modal on X click
+const closeVideoModalBtn = document.getElementById('close-video-modal');
+if (closeVideoModalBtn) {
+    closeVideoModalBtn.addEventListener('click', closeVideoModal);
+}
+
+// Cancel button
+const cancelVideoBtn = document.getElementById('cancel-video');
+if (cancelVideoBtn) {
+    cancelVideoBtn.addEventListener('click', closeVideoModal);
+}
+
+// Close modal on outside click
+window.addEventListener('click', (e) => {
+    const modal = document.getElementById('video-modal');
+    if (e.target === modal) {
+        closeVideoModal();
+    }
+});
+
+// Edit video (global function for onclick)
+window.editVideo = function(index) {
+    openVideoModal(index);
+};
+
+// Delete video (global function for onclick)
+window.deleteVideo = async function(index) {
+    if (!confirm('Are you sure you want to delete this video?')) {
+        return;
+    }
+    
+    try {
+        previousStreamsData.videos.splice(index, 1);
+        
+        const response = await fetch(`${API_BASE}/previous-streams`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify(previousStreamsData)
+        });
+        
+        if (response.status === 401) {
+            alert('Your session has expired. Please log in again.');
+            showLogin();
+            return;
+        }
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        await loadPreviousStreams();
+        alert('Video deleted successfully!');
+    } catch (error) {
+        console.error('Error deleting video:', error);
+        alert('Failed to delete video. Please try again.');
+    }
+};
+
+// Video form submission
+const videoForm = document.getElementById('video-form');
+if (videoForm) {
+    videoForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        // Check authentication
+        try {
+            const authCheck = await fetch(`${API_BASE}/admin/check-auth`, { credentials: 'include' });
+            const authData = await authCheck.json();
+            if (!authData.authenticated) {
+                alert('Your session has expired. Please log in again.');
+                showLogin();
+                return;
+            }
+        } catch (authError) {
+            console.error('Auth check failed:', authError);
+            alert('Authentication check failed. Please log in again.');
+            showLogin();
+            return;
+        }
+        
+        const videoUrl = document.getElementById('video-url').value.trim();
+        const videoTitle = document.getElementById('video-title').value.trim();
+        const videoDate = document.getElementById('video-date').value;
+        const videoIndex = document.getElementById('video-index').value;
+        
+        const videoId = extractVideoId(videoUrl);
+        if (!videoId) {
+            alert('Invalid YouTube URL. Please enter a valid YouTube video URL or ID.');
+            return;
+        }
+        
+        const videoData = {
+            url: videoUrl,
+            videoId: videoId,
+            title: videoTitle || null,
+            date: videoDate || null
+        };
+        
+        try {
+            if (videoIndex !== '') {
+                // Edit existing
+                previousStreamsData.videos[parseInt(videoIndex)] = videoData;
+            } else {
+                // Add new
+                previousStreamsData.videos.push(videoData);
+            }
+            
+            const response = await fetch(`${API_BASE}/previous-streams`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify(previousStreamsData)
+            });
+            
+            if (response.status === 401) {
+                alert('Your session has expired. Please log in again.');
+                showLogin();
+                return;
+            }
+            
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            await loadPreviousStreams();
+            closeVideoModal();
+            alert('Video saved successfully!');
+        } catch (error) {
+            console.error('Error saving video:', error);
+            alert('Failed to save video. Please try again.');
+        }
+    });
 }
 
 // Instagram Configuration
@@ -537,24 +779,24 @@ async function loadZoneStructure() {
                     <label>Group Image</label>
                     <input type="file" accept="image/*" onchange="uploadGroupImage('${groupKey}', this)">
                 </div>
-                <div class="colleges-editor">
-                    <h4>Colleges</h4>
-                    <div id="colleges-${groupKey}"></div>
-                    <button class="btn btn-primary btn-small" onclick="addCollege('${groupKey}')">Add College</button>
+                <div class="fellowships-editor">
+                    <h4>Fellowships</h4>
+                    <div id="fellowships-${groupKey}"></div>
+                    <button class="btn btn-primary btn-small" onclick="addFellowship('${groupKey}')">Add Fellowship</button>
                 </div>
             `;
             container.appendChild(card);
             
-            // Load colleges
-            const collegesContainer = document.getElementById(`colleges-${groupKey}`);
-            group.colleges.forEach((college, index) => {
+            // Load fellowships
+            const fellowshipsContainer = document.getElementById(`fellowships-${groupKey}`);
+            group.fellowships.forEach((fellowship, index) => {
                 const item = document.createElement('div');
-                item.className = 'college-item';
+                item.className = 'fellowship-item';
                 item.innerHTML = `
-                    <input type="text" value="${college}" onchange="updateCollege('${groupKey}', ${index}, this.value)">
-                    <button class="btn btn-danger btn-small" onclick="removeCollege('${groupKey}', ${index})">Remove</button>
+                    <input type="text" value="${fellowship}" onchange="updateFellowship('${groupKey}', ${index}, this.value)">
+                    <button class="btn btn-danger btn-small" onclick="removeFellowship('${groupKey}', ${index})">Remove</button>
                 `;
-                collegesContainer.appendChild(item);
+                fellowshipsContainer.appendChild(item);
             });
         });
     } catch (error) {
@@ -562,22 +804,22 @@ async function loadZoneStructure() {
     }
 }
 
-window.addCollege = (groupKey) => {
-    const container = document.getElementById(`colleges-${groupKey}`);
+window.addFellowship = (groupKey) => {
+    const container = document.getElementById(`fellowships-${groupKey}`);
     const item = document.createElement('div');
-    item.className = 'college-item';
+    item.className = 'fellowship-item';
     const index = container.children.length;
     item.innerHTML = `
-        <input type="text" placeholder="College name" onchange="updateCollege('${groupKey}', ${index}, this.value)">
-        <button class="btn btn-danger btn-small" onclick="removeCollege('${groupKey}', ${index})">Remove</button>
+        <input type="text" placeholder="Fellowship name" onchange="updateFellowship('${groupKey}', ${index}, this.value)">
+        <button class="btn btn-danger btn-small" onclick="removeFellowship('${groupKey}', ${index})">Remove</button>
     `;
     container.appendChild(item);
 };
 
-window.updateCollege = async (groupKey, index, value) => {
+window.updateFellowship = async (groupKey, index, value) => {
     const zoneData = await fetch(`${API_BASE}/zone-data`).then(r => r.json());
-    if (!zoneData[groupKey].colleges) zoneData[groupKey].colleges = [];
-    zoneData[groupKey].colleges[index] = value;
+    if (!zoneData[groupKey].fellowships) zoneData[groupKey].fellowships = [];
+    zoneData[groupKey].fellowships[index] = value;
         await fetch(`${API_BASE}/zone-data`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
@@ -586,9 +828,9 @@ window.updateCollege = async (groupKey, index, value) => {
         });
 };
 
-window.removeCollege = async (groupKey, index) => {
+window.removeFellowship = async (groupKey, index) => {
     const zoneData = await fetch(`${API_BASE}/zone-data`).then(r => r.json());
-    zoneData[groupKey].colleges.splice(index, 1);
+    zoneData[groupKey].fellowships.splice(index, 1);
         await fetch(`${API_BASE}/zone-data`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },

@@ -785,19 +785,103 @@ h1, h2, h3, h4, h5, h6 {
     margin-bottom: 1.5rem;
 }
 
-.previous-streams-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+/* Carousel Container */
+.carousel-container {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.carousel-wrapper {
+    flex: 1;
+    overflow: hidden;
+    position: relative;
+}
+
+.carousel-track {
+    display: flex;
+    transition: transform 0.5s ease;
     gap: 1.5rem;
 }
 
+.carousel-slide {
+    min-width: 100%;
+    flex-shrink: 0;
+}
+
+.carousel-btn {
+    background: var(--primary-color);
+    color: var(--white);
+    border: none;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+    flex-shrink: 0;
+    z-index: 10;
+}
+
+.carousel-btn:hover {
+    background: var(--secondary-color);
+    transform: scale(1.1);
+}
+
+.carousel-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.carousel-btn svg {
+    width: 20px;
+    height: 20px;
+}
+
+/* Carousel Indicators */
+.carousel-indicators {
+    display: flex;
+    justify-content: center;
+    gap: 0.5rem;
+    margin-top: 1rem;
+}
+
+.carousel-indicator {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    border: none;
+    background: var(--text-color-muted);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    padding: 0;
+}
+
+.carousel-indicator.active {
+    background: var(--primary-color);
+    width: 30px;
+    border-radius: 5px;
+}
+
+.carousel-indicator:hover {
+    background: var(--secondary-color);
+}
+
+/* Stream Cards */
 .stream-card {
-    background: var(--white);
+    background: var(--card-bg);
     border-radius: 8px;
     overflow: hidden;
     box-shadow: var(--shadow);
     transition: transform 0.3s ease, box-shadow 0.3s ease;
     cursor: pointer;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
 }
 
 .stream-card:hover {
@@ -822,20 +906,32 @@ h1, h2, h3, h4, h5, h6 {
     object-fit: cover;
 }
 
-.stream-card-duration {
+.play-overlay {
     position: absolute;
-    bottom: 8px;
-    right: 8px;
-    background: rgba(0, 0, 0, 0.8);
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(0, 0, 0, 0.7);
+    border-radius: 50%;
+    width: 64px;
+    height: 64px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
     color: var(--white);
-    padding: 0.25rem 0.5rem;
-    border-radius: 4px;
-    font-size: 0.85rem;
-    font-weight: 600;
+}
+
+.stream-card:hover .play-overlay {
+    background: rgba(0, 0, 0, 0.9);
+    transform: translate(-50%, -50%) scale(1.1);
 }
 
 .stream-card-info {
     padding: 1rem;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
 }
 
 .stream-card-title {
@@ -849,26 +945,115 @@ h1, h2, h3, h4, h5, h6 {
     overflow: hidden;
 }
 
-.stream-card-meta {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    font-size: 0.85rem;
-    color: var(--text-color-muted);
-}
-
-.stream-card-views {
-    display: flex;
-    align-items: center;
-    gap: 0.25rem;
-}
-
 .stream-card-placeholder {
-    grid-column: 1 / -1;
     text-align: center;
     padding: 3rem;
-    color: #999;
+    color: var(--text-color-muted);
     font-style: italic;
+    width: 100%;
+}
+
+/* Video Modal */
+.video-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.9);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+    padding: 2rem;
+}
+
+.video-modal-content {
+    position: relative;
+    width: 100%;
+    max-width: 1200px;
+    background: var(--card-bg);
+    border-radius: 10px;
+    padding: 2rem;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.video-modal-close {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    font-size: 2rem;
+    color: var(--text-color);
+    cursor: pointer;
+    background: var(--card-bg);
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: all 0.3s ease;
+    z-index: 10;
+}
+
+.video-modal-close:hover {
+    background: var(--primary-color);
+    color: var(--white);
+    transform: rotate(90deg);
+}
+
+.video-modal-content h3 {
+    color: var(--text-color);
+    margin-bottom: 1rem;
+    padding-right: 3rem;
+}
+
+.video-modal-player {
+    position: relative;
+    padding-bottom: 56.25%; /* 16:9 aspect ratio */
+    height: 0;
+    overflow: hidden;
+    border-radius: 8px;
+}
+
+.video-modal-player iframe {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    border: none;
+    border-radius: 8px;
+}
+
+/* Responsive Carousel */
+@media (max-width: 768px) {
+    .carousel-container {
+        gap: 0.5rem;
+    }
+    
+    .carousel-btn {
+        width: 35px;
+        height: 35px;
+    }
+    
+    .carousel-btn svg {
+        width: 18px;
+        height: 18px;
+    }
+    
+    .video-modal-content {
+        padding: 1rem;
+    }
+    
+    .video-modal-close {
+        top: 0.5rem;
+        right: 0.5rem;
+        width: 35px;
+        height: 35px;
+        font-size: 1.5rem;
+    }
 }
 
 /* Comment Input Area */
@@ -1231,11 +1416,11 @@ h1, h2, h3, h4, h5, h6 {
     object-fit: contain;
 }
 
-.colleges-list {
+.fellowships-list {
     padding: 0.5rem 0;
 }
 
-.college-item {
+.fellowship-item {
     padding: 0.75rem 1rem;
     margin: 0.5rem 0;
     background: var(--light-bg);
@@ -1245,13 +1430,13 @@ h1, h2, h3, h4, h5, h6 {
     transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
-.college-item:hover {
+.fellowship-item:hover {
     transform: translateX(5px);
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     background: #e8f4f8;
 }
 
-.college-placeholder {
+.fellowship-placeholder {
     padding: 1rem;
     color: #999;
     font-style: italic;
@@ -1384,8 +1569,13 @@ footer {
         gap: 1rem;
     }
 
-    .previous-streams-grid {
-        grid-template-columns: 1fr;
+    .carousel-slide {
+        min-width: 100%;
+    }
+    
+    .carousel-btn {
+        width: 30px;
+        height: 30px;
     }
 
     .feature-grid {

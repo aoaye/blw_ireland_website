@@ -114,14 +114,14 @@ async function updateZoneStructure() {
     const zoneData = await loadZoneDataFromAPI();
     if (!zoneData) return;
     
-    // Update colleges in zone-data.js format for existing code
-    if (typeof populateColleges === 'function') {
-        // Update the zoneData object that populateColleges uses
+    // Update fellowships in zone-data.js format for existing code
+    if (typeof populateFellowships === 'function') {
+        // Update the zoneData object that populateFellowships uses
         if (window.zoneData) {
-            window.zoneData.groupA.colleges = zoneData.groupA?.colleges || [];
-            window.zoneData.groupB.colleges = zoneData.groupB?.colleges || [];
-            window.zoneData.groupC.colleges = zoneData.groupC?.colleges || [];
-            populateColleges();
+            window.zoneData.groupA.fellowships = zoneData.groupA?.fellowships || [];
+            window.zoneData.groupB.fellowships = zoneData.groupB?.fellowships || [];
+            window.zoneData.groupC.fellowships = zoneData.groupC?.fellowships || [];
+            populateFellowships();
         }
     }
     

@@ -84,6 +84,13 @@
                         <p style="color: #666;">Configure a YouTube stream URL above to see a preview</p>
                     </div>
                 </div>
+                
+                <div class="form-card" style="margin-top: 2rem;">
+                    <h3>Previous Livestreams</h3>
+                    <p style="margin-bottom: 1rem; color: #666;">Add YouTube videos to display in the Previous Livestreams section on the Live TV page.</p>
+                    <div id="previous-streams-list"></div>
+                    <button id="add-video-btn" class="btn btn-primary" style="margin-top: 1rem;">Add Video</button>
+                </div>
             </section>
 
             <!-- Instagram Section -->
@@ -226,6 +233,34 @@
                 </div>
                 <button type="submit" class="btn btn-primary">Save Event</button>
                 <button type="button" class="btn btn-secondary" id="cancel-event">Cancel</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Video Modal -->
+    <div id="video-modal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <span class="close" id="close-video-modal">&times;</span>
+            <h2 id="video-modal-title">Add Video</h2>
+            <form id="video-form">
+                <input type="hidden" id="video-index">
+                <div class="form-group">
+                    <label for="video-url">YouTube Video URL or ID</label>
+                    <input type="text" id="video-url" placeholder="https://youtube.com/watch?v=VIDEO_ID or just VIDEO_ID" required>
+                    <small>Enter the full YouTube URL or just the video ID</small>
+                </div>
+                <div class="form-group">
+                    <label for="video-title">Video Title (Optional)</label>
+                    <input type="text" id="video-title" placeholder="Leave empty to auto-fetch from YouTube">
+                    <small>If left empty, the title will be fetched from YouTube</small>
+                </div>
+                <div class="form-group">
+                    <label for="video-date">Date (Optional)</label>
+                    <input type="date" id="video-date">
+                    <small>Date when this service/stream was recorded</small>
+                </div>
+                <button type="submit" class="btn btn-primary">Save Video</button>
+                <button type="button" class="btn btn-secondary" id="cancel-video">Cancel</button>
             </form>
         </div>
     </div>

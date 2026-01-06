@@ -109,6 +109,7 @@ const EVENTS_FILE = path.join(DATA_DIR, 'events.json');
 const ZONE_DATA_FILE = path.join(DATA_DIR, 'zone-data.json');
 const STREAM_CONFIG_FILE = path.join(DATA_DIR, 'stream-config.json');
 const INSTAGRAM_CONFIG_FILE = path.join(DATA_DIR, 'instagram-config.json');
+const PREVIOUS_STREAMS_FILE = path.join(DATA_DIR, 'previous-streams.json');
 
 // Initialize data directory and default config
 async function initializeData() {
@@ -154,9 +155,9 @@ async function initializeData() {
             await fs.access(ZONE_DATA_FILE);
         } catch {
             const defaultZoneData = {
-                groupA: { name: "Group A - Mighty Army", colleges: [], image: null },
-                groupB: { name: "Group B - LimitBreakers", colleges: [], image: null },
-                groupC: { name: "Group C - Boundless Love", colleges: [], image: null }
+                groupA: { name: "Group A - Mighty Army", fellowships: [], image: null },
+                groupB: { name: "Group B - LimitBreakers", fellowships: [], image: null },
+                groupC: { name: "Group C - Boundless Love", fellowships: [], image: null }
             };
             await fs.writeFile(ZONE_DATA_FILE, JSON.stringify(defaultZoneData, null, 2));
         }
@@ -182,6 +183,15 @@ async function initializeData() {
                 manualPostUrl: '',
                 accessToken: '',
                 userId: ''
+            }, null, 2));
+        }
+        
+        // Initialize previous streams
+        try {
+            await fs.access(PREVIOUS_STREAMS_FILE);
+        } catch {
+            await fs.writeFile(PREVIOUS_STREAMS_FILE, JSON.stringify({
+                videos: []
             }, null, 2));
         }
     } catch (error) {

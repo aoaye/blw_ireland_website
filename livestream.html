@@ -35,7 +35,7 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+            background: #000000;
             color: var(--white);
             text-align: center;
             border-radius: 10px;
@@ -110,12 +110,27 @@
                 <!-- Previous Livestreams Section -->
                 <div class="previous-streams-section">
                     <h3>Previous Livestreams</h3>
-                    <div class="previous-streams-grid" id="previous-streams">
-                        <!-- Previous streams will be populated here -->
-                        <div class="stream-card-placeholder">
-                            <p>No previous streams available</p>
+                    <div class="carousel-container">
+                        <button class="carousel-btn carousel-btn-prev" id="carousel-prev" aria-label="Previous video">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="15 18 9 12 15 6"></polyline>
+                            </svg>
+                        </button>
+                        <div class="carousel-wrapper">
+                            <div class="carousel-track" id="carousel-track">
+                                <!-- Previous streams will be populated here -->
+                                <div class="stream-card-placeholder">
+                                    <p>No previous streams available</p>
+                                </div>
+                            </div>
                         </div>
+                        <button class="carousel-btn carousel-btn-next" id="carousel-next" aria-label="Next video">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="9 18 15 12 9 6"></polyline>
+                            </svg>
+                        </button>
                     </div>
+                    <div class="carousel-indicators" id="carousel-indicators"></div>
                 </div>
             </div>
         </section>
