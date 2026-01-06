@@ -38,23 +38,23 @@
         <section class="about-content">
             <div class="container">
                 <div class="about-section">
-                    <h3>Our Mission</h3>
-                    <p>BLW Ireland Zone is dedicated to building lives, transforming communities, and spreading hope throughout Ireland. We are committed to sharing the love of Christ and making a positive impact in the lives of individuals and families.</p>
-                </div>
-
-                <div class="about-section">
                     <h3>Our Vision</h3>
-                    <p>To be a beacon of light and hope in Ireland, creating a community where people can grow in faith, find purpose, and experience the transformative power of God's love. We envision a church that reaches beyond its walls to impact the nation.</p>
+                    <p>BLW Ireland Zone is dedicated to take the divine presence of God to the nations and peoples of the world; and to demonstrate the character of the Spirit in the lives of the people.</p>
                 </div>
 
                 <div class="about-section">
-                    <h3>What We Believe</h3>
+                    <h3>Our Mission</h3>
+                    <p>As BLW Ireland is to raise generations of men and women who will come into their inheritance to fulfill God's dream.</p>
+                </div>
+
+                <div class="about-section">
+                    <h3>Our Core Values</h3>
                     <ul class="beliefs-list">
-                        <li>We believe in the power of God's word to transform lives</li>
-                        <li>We believe in the importance of community and fellowship</li>
-                        <li>We believe in serving others with love and compassion</li>
-                        <li>We believe in the power of prayer and worship</li>
-                        <li>We believe in building strong families and relationships</li>
+                        <li>Fellowship</li>
+                        <li>Leadership</li>
+                        <li>Partnership</li>
+                        <li>Reaching the world through new media</li>
+                        <li>Reaching the world with our ministry materials</li>
                     </ul>
                 </div>
 
@@ -62,11 +62,10 @@
                     <h3>Zone Structure</h3>
                     <p>BLW Ireland Zone is organized into groups and colleges, each serving our community in unique ways.</p>
                     <div class="zone-structure">
-                        <div class="zone-dropdown">
-                            <button class="zone-header" onclick="toggleDropdown(this)">
+                        <div class="zone-container">
+                            <div class="zone-header-fixed">
                                 <span class="zone-title">BLW Ireland Zone</span>
-                                <span class="dropdown-icon">▼</span>
-                            </button>
+                            </div>
                             <div class="zone-content">
                                 <!-- Group A -->
                                 <div class="group-dropdown">
@@ -151,6 +150,40 @@
         </div>
     </footer>
 
+    <script src="theme.js"></script>
+    <button class="theme-toggle" id="theme-toggle" aria-label="Toggle dark mode">
+        <svg id="theme-icon-sun" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: none;">
+            <circle cx="12" cy="12" r="5"></circle>
+            <line x1="12" y1="1" x2="12" y2="3"></line>
+            <line x1="12" y1="21" x2="12" y2="23"></line>
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+            <line x1="1" y1="12" x2="3" y2="12"></line>
+            <line x1="21" y1="12" x2="23" y2="12"></line>
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+        </svg>
+        <svg id="theme-icon-moon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+        </svg>
+    </button>
+    <button class="theme-toggle" id="theme-toggle" aria-label="Toggle dark mode">
+        <svg id="theme-icon-sun" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: none;">
+            <circle cx="12" cy="12" r="5"></circle>
+            <line x1="12" y1="1" x2="12" y2="3"></line>
+            <line x1="12" y1="21" x2="12" y2="23"></line>
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+            <line x1="1" y1="12" x2="3" y2="12"></line>
+            <line x1="21" y1="12" x2="23" y2="12"></line>
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+        </svg>
+        <svg id="theme-icon-moon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+        </svg>
+    </button>
+    <script src="theme.js"></script>
     <script src="zone-data.js"></script>
     <script src="frontend-api.js"></script>
     <script src="script.js"></script>

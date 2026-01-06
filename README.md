@@ -35,11 +35,16 @@ Then open: **http://localhost:8000**
 npm install
 
 # Then run:
-node admin-server.js
+npm start
+# Or: node admin-server.js
 ```
 
 The website will be available at: **http://localhost:8080**
 The admin portal will be at: **http://localhost:8080/admin**
+
+**For Live Streaming:**
+- Configure YouTube Live streaming in the Admin Portal
+- See [EMBEDDED_STREAMING_GUIDE.md](EMBEDDED_STREAMING_GUIDE.md) for detailed setup instructions
 
 ### Option 3: VS Code Live Server
 
@@ -97,9 +102,11 @@ blw_ireland_website/
 └── README.md           # This file
 ```
 
-## RTMP Stream Setup
+## Streaming Setup
 
-See `RTMP_SETUP.md` for detailed instructions on configuring your RTMP server.
+This project supports embedded streaming from YouTube, Facebook, or Vimeo. **No server setup needed!**
+- See [EMBEDDED_STREAMING_GUIDE.md](EMBEDDED_STREAMING_GUIDE.md) for setup instructions
+- **Best for**: Most users - free, reliable, automatic recording
 
 ## Browser Support
 

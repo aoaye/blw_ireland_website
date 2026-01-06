@@ -2,6 +2,8 @@
   "adminPassword": "$2a$10$CzZhq1K54IAzwsKAoE6NsOMMRXOYZjxJe88LgLLLPPfgkK/pgBbtm",
   "siteTitle": "BLW Ireland Zone",
   "tagline": "Making An Impact; In universities across the nation and beyond...",
-  "heroBackground": "/uploads/image-1767620087315-708129065.jpeg",
-  "instagramAutoFetch": true
+  "instagramAutoFetch": true,
+  "heroBackgrounds": [
+    "/uploads/image-1767620087315-708129065.jpeg"
+  ]
 }

@@ -22,16 +22,20 @@ app.use(bodyParser.urlencoded({ extended: true }));
 // or the browser will NOT send cookies. Set one of these environment variables:
 // - NODE_ENV=production (sets secure to true)
 // - FORCE_SECURE_COOKIES=true (forces secure to true)
+// - USE_SECURE_COOKIES=false (forces secure to false, for localhost)
 const isProduction = process.env.NODE_ENV === 'production';
 const forceSecure = process.env.FORCE_SECURE_COOKIES === 'true';
-// Default to true for production (HTTPS sites require secure cookies)
-const useSecureCookies = isProduction || forceSecure || process.env.USE_SECURE_COOKIES !== 'false';
+const forceInsecure = process.env.USE_SECURE_COOKIES === 'false';
+// Default to false for localhost (HTTP), true for production (HTTPS)
+// Only set to true if explicitly forced or in production mode
+const useSecureCookies = !forceInsecure && (isProduction || forceSecure);
 
 // Session configuration - MUST be before routes
 app.use(session({
     secret: process.env.SESSION_SECRET || 'blw-ireland-zone-secret-key-change-in-production',
-    resave: true, // Set to true to help with session persistence
+    resave: false, // Don't resave unchanged sessions
     saveUninitialized: false,
+    rolling: true, // Reset expiration on activity
     cookie: { 
         secure: useSecureCookies, // HTTPS only - REQUIRED for HTTPS sites
         httpOnly: true, // Prevent XSS attacks
@@ -187,17 +191,19 @@ async function initializeData() {
 
 // Authentication middleware
 function requireAuth(req, res, next) {
-    // Debug logging for production issues
-    if (process.env.DEBUG_AUTH === 'true') {
-        console.log('Auth check:', {
-            hasSession: !!req.session,
-            authenticated: !!(req.session && req.session.authenticated),
-            sessionId: req.sessionID,
-            cookies: req.headers.cookie
-        });
-    }
+    // Always log auth checks for debugging
+    console.log('Auth check:', {
+        path: req.path,
+        hasSession: !!req.session,
+        authenticated: !!(req.session && req.session.authenticated),
+        sessionId: req.sessionID,
+        hasCookies: !!req.headers.cookie,
+        cookieHeader: req.headers.cookie ? 'present' : 'missing'
+    });
     
     if (req.session && req.session.authenticated) {
+        // Touch session to keep it alive
+        req.session.touch();
         return next();
     }
     
@@ -205,7 +211,10 @@ function requireAuth(req, res, next) {
     const origin = req.headers.origin;
     if (origin) {
         res.setHeader('Access-Control-Allow-Origin', origin);
+        res.setHeader('Access-Control-Allow-Credentials', 'true');
     }
+    
+    console.log('❌ Unauthorized request to:', req.path, 'Session:', req.session ? 'exists' : 'missing', 'Authenticated:', req.session?.authenticated);
     res.setHeader('Access-Control-Allow-Credentials', 'true');
     
     res.status(401).json({ error: 'Unauthorized' });
@@ -256,9 +265,7 @@ app.post('/api/admin/login', async (req, res) => {
                 }
                 res.setHeader('Access-Control-Allow-Credentials', 'true');
                 
-                // Ensure cookie is set by touching the session
-                req.session.touch();
-                
+                console.log('✅ Login successful - Session ID:', req.sessionID, 'Secure cookies:', useSecureCookies);
                 res.json({ success: true, sessionId: req.sessionID });
             });
         } else {
@@ -276,6 +283,10 @@ app.post('/api/admin/logout', (req, res) => {
 });
 
 app.get('/api/admin/check-auth', (req, res) => {
+    // Touch the session to keep it alive
+    if (req.session) {
+        req.session.touch();
+    }
     res.json({ authenticated: !!(req.session && req.session.authenticated) });
 });
 
@@ -303,17 +314,26 @@ app.get('/api/config', async (req, res) => {
 });
 
 app.put('/api/config', requireAuth, async (req, res) => {
-    const config = await readJSON(CONFIG_FILE);
-    const updates = req.body;
+    try {
+        // Touch the session to keep it alive
+        if (req.session) {
+            req.session.touch();
+        }
+        const config = await readJSON(CONFIG_FILE);
+        const updates = req.body;
     
     if (updates.newPassword) {
         config.adminPassword = await bcrypt.hash(updates.newPassword, 10);
         delete updates.newPassword;
     }
     
-    Object.assign(config, updates);
-    await writeJSON(CONFIG_FILE, config);
-    res.json({ success: true });
+        Object.assign(config, updates);
+        await writeJSON(CONFIG_FILE, config);
+        res.json({ success: true });
+    } catch (error) {
+        console.error('Error saving config:', error);
+        res.status(500).json({ error: 'Failed to save configuration' });
+    }
 });
 
 // ==================== EVENTS ROUTES ====================
@@ -336,14 +356,23 @@ app.post('/api/events', requireAuth, async (req, res) => {
 });
 
 app.put('/api/events/:id', requireAuth, async (req, res) => {
-    const events = await readJSON(EVENTS_FILE) || [];
-    const index = events.findIndex(e => e.id === req.params.id);
-    if (index !== -1) {
-        events[index] = { ...events[index], ...req.body };
-        await writeJSON(EVENTS_FILE, events);
-        res.json(events[index]);
-    } else {
-        res.status(404).json({ error: 'Event not found' });
+    try {
+        // Touch the session to keep it alive
+        if (req.session) {
+            req.session.touch();
+        }
+        const events = await readJSON(EVENTS_FILE) || [];
+        const index = events.findIndex(e => e.id === req.params.id);
+        if (index !== -1) {
+            events[index] = { ...events[index], ...req.body };
+            await writeJSON(EVENTS_FILE, events);
+            res.json(events[index]);
+        } else {
+            res.status(404).json({ error: 'Event not found' });
+        }
+    } catch (error) {
+        console.error('Error updating event:', error);
+        res.status(500).json({ error: 'Failed to update event' });
     }
 });
 
@@ -362,8 +391,17 @@ app.get('/api/zone-data', async (req, res) => {
 });
 
 app.put('/api/zone-data', requireAuth, async (req, res) => {
-    await writeJSON(ZONE_DATA_FILE, req.body);
-    res.json({ success: true });
+    try {
+        // Touch the session to keep it alive
+        if (req.session) {
+            req.session.touch();
+        }
+        await writeJSON(ZONE_DATA_FILE, req.body);
+        res.json({ success: true });
+    } catch (error) {
+        console.error('Error saving zone data:', error);
+        res.status(500).json({ error: 'Failed to save zone data' });
+    }
 });
 
 // ==================== STREAM CONFIG ROUTES ====================
@@ -374,8 +412,17 @@ app.get('/api/stream-config', async (req, res) => {
 });
 
 app.put('/api/stream-config', requireAuth, async (req, res) => {
-    await writeJSON(STREAM_CONFIG_FILE, req.body);
-    res.json({ success: true });
+    try {
+        // Touch the session to keep it alive
+        if (req.session) {
+            req.session.touch();
+        }
+        await writeJSON(STREAM_CONFIG_FILE, req.body);
+        res.json({ success: true });
+    } catch (error) {
+        console.error('Error saving stream config:', error);
+        res.status(500).json({ error: 'Failed to save stream configuration' });
+    }
 });
 
 // ==================== INSTAGRAM CONFIG ROUTES ====================
@@ -388,10 +435,19 @@ app.get('/api/instagram-config', async (req, res) => {
 });
 
 app.put('/api/instagram-config', requireAuth, async (req, res) => {
-    const currentConfig = await readJSON(INSTAGRAM_CONFIG_FILE);
-    const updated = { ...currentConfig, ...req.body };
-    await writeJSON(INSTAGRAM_CONFIG_FILE, updated);
-    res.json({ success: true });
+    try {
+        // Touch the session to keep it alive
+        if (req.session) {
+            req.session.touch();
+        }
+        const currentConfig = await readJSON(INSTAGRAM_CONFIG_FILE);
+        const updated = { ...currentConfig, ...req.body };
+        await writeJSON(INSTAGRAM_CONFIG_FILE, updated);
+        res.json({ success: true });
+    } catch (error) {
+        console.error('Error saving Instagram config:', error);
+        res.status(500).json({ error: 'Failed to save Instagram configuration' });
+    }
 });
 
 // ==================== IMAGE UPLOAD ROUTES ====================

@@ -100,48 +100,76 @@ async function loadDashboardData() {
         ]);
         
         document.getElementById('events-count').textContent = events.length || 0;
-        document.getElementById('stream-status').textContent = streamConfig.isLive ? 'Live' : 'Offline';
-        document.getElementById('instagram-status').textContent = instagramConfig.autoFetch ? 'Auto-fetch Enabled' : 'Manual';
+        document.getElementById('stream-status').textContent = streamConfig.embeddedStreamUrl ? 'Configured' : 'Not Configured';
+        document.getElementById('instagram-status').textContent = instagramConfig.manualPostUrl ? 'Configured' : 'Not Configured';
     } catch (error) {
         console.error('Failed to load dashboard data:', error);
     }
 }
 
-// Stream Configuration
+// Stream Configuration (YouTube Only)
 const streamForm = document.getElementById('stream-form');
 if (streamForm) {
-    console.log('Stream form found, setting up event listener');
     streamForm.addEventListener('submit', async (e) => {
         e.preventDefault();
-        console.log('Stream form submitted');
-        const config = {
-            rtmpServerUrl: document.getElementById('rtmp-server-url').value,
-            rtmpStreamKey: document.getElementById('rtmp-stream-key').value,
-            streamType: document.getElementById('stream-type').value,
-            isLive: document.getElementById('stream-live').checked
-        };
         
-        console.log('Saving stream config:', { ...config, rtmpStreamKey: config.rtmpStreamKey ? '***' : '' });
+        // Check authentication first
+        try {
+            const authCheck = await fetch(`${API_BASE}/admin/check-auth`, {
+                credentials: 'include'
+            });
+            const authData = await authCheck.json();
+            if (!authData.authenticated) {
+                alert('Your session has expired. Please log in again.');
+                showLogin();
+                return;
+            }
+        } catch (authError) {
+            console.error('Auth check failed:', authError);
+            alert('Authentication check failed. Please log in again.');
+            showLogin();
+            return;
+        }
+        
+        const embeddedUrl = document.getElementById('embedded-stream-url').value.trim();
+        const config = {
+            streamType: 'embedded',
+            embeddedStreamUrl: embeddedUrl || undefined,
+            platform: 'youtube'
+        };
         
         try {
             const response = await fetch(`${API_BASE}/stream-config`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                credentials: 'include', // Include cookies for session authentication
+                credentials: 'include',
                 body: JSON.stringify(config)
             });
             
-            console.log('Stream config response status:', response.status);
+            if (response.status === 401) {
+                alert('Your session has expired. Please log in again.');
+                showLogin();
+                return;
+            }
             
             if (!response.ok) {
+                const errorText = await response.text();
+                console.error('Error response:', errorText);
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
             
             const result = await response.json();
-            console.log('Stream config save result:', result);
             
             if (result.success) {
-                alert('Stream configuration saved successfully!');
+                let message = 'Stream configuration saved successfully!';
+                if (embeddedUrl) {
+                    message += '\n\nThe stream will be displayed on the livestream page within 30 seconds.';
+                    updateStreamPreview(embeddedUrl);
+                } else {
+                    message += '\n\nNo stream URL is set. The livestream page will show a placeholder until a URL is configured.';
+                    updateStreamPreview(null);
+                }
+                alert(message);
                 loadDashboardData();
             } else {
                 throw new Error('Save failed');
@@ -151,18 +179,69 @@ if (streamForm) {
             alert('Failed to save stream configuration. Please check the console for details.');
         }
     });
+    
+    // Update preview when URL changes
+    const streamUrlField = document.getElementById('embedded-stream-url');
+    if (streamUrlField) {
+        streamUrlField.addEventListener('input', function() {
+            const url = this.value.trim();
+            if (url) {
+                updateStreamPreview(url);
+            } else {
+                updateStreamPreview(null);
+            }
+        });
+    }
 } else {
     console.error('Stream form not found');
+}
+
+// Update stream preview
+function updateStreamPreview(streamUrl) {
+    const preview = document.getElementById('stream-preview');
+    if (!preview) return;
+    
+    if (streamUrl) {
+        // Extract YouTube video ID
+        let videoId = '';
+        if (streamUrl.includes('youtube.com/watch?v=')) {
+            videoId = streamUrl.split('v=')[1].split('&')[0];
+        } else if (streamUrl.includes('youtu.be/')) {
+            videoId = streamUrl.split('youtu.be/')[1].split('?')[0];
+        } else if (streamUrl.includes('youtube.com/embed/')) {
+            videoId = streamUrl.split('embed/')[1].split('?')[0];
+        } else if (streamUrl.length === 11 && /^[a-zA-Z0-9_-]+$/.test(streamUrl)) {
+            videoId = streamUrl;
+        }
+        
+        if (videoId) {
+            preview.innerHTML = `
+                <iframe 
+                    src="https://www.youtube.com/embed/${videoId}?rel=0&modestbranding=1" 
+                    style="width: 100%; height: 300px; border: none; border-radius: 5px;"
+                    allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
+                    allowfullscreen>
+                </iframe>
+                <p style="margin-top: 1rem; color: #666; font-size: 0.9em;">Preview of how the stream will appear on the livestream page</p>
+            `;
+        } else {
+            preview.innerHTML = '<p style="color: #d32f2f;">Invalid YouTube URL. Please enter a valid YouTube URL or video ID.</p>';
+        }
+    } else {
+        preview.innerHTML = '<p style="color: #666;">Enter a YouTube stream URL above to see a preview</p>';
+    }
 }
 
 // Load stream config
 async function loadStreamConfig() {
     try {
         const config = await fetch(`${API_BASE}/stream-config`).then(r => r.json());
-        document.getElementById('rtmp-server-url').value = config.rtmpServerUrl || '';
-        document.getElementById('rtmp-stream-key').value = config.rtmpStreamKey || '';
-        document.getElementById('stream-type').value = config.streamType || 'hls';
-        document.getElementById('stream-live').checked = config.isLive || false;
+        document.getElementById('embedded-stream-url').value = config.embeddedStreamUrl || '';
+        
+        // Update preview if URL exists
+        if (config.embeddedStreamUrl) {
+            updateStreamPreview(config.embeddedStreamUrl);
+        }
     } catch (error) {
         console.error('Failed to load stream config:', error);
     }
@@ -171,56 +250,66 @@ async function loadStreamConfig() {
 // Instagram Configuration
 const instagramForm = document.getElementById('instagram-form');
 if (instagramForm) {
-    console.log('Instagram form found, setting up event listener');
     instagramForm.addEventListener('submit', async (e) => {
         e.preventDefault();
-        console.log('Instagram form submitted');
-        const config = {
-            autoFetch: document.getElementById('instagram-auto-fetch').checked,
-            manualPostUrl: document.getElementById('instagram-manual-url').value,
-            accessToken: document.getElementById('instagram-access-token').value || undefined,
-            userId: document.getElementById('instagram-user-id').value || undefined
-        };
         
-        console.log('Saving Instagram config:', { ...config, accessToken: config.accessToken ? '***' : '' });
+        // Check authentication first
+        try {
+            const authCheck = await fetch(`${API_BASE}/admin/check-auth`, {
+                credentials: 'include'
+            });
+            const authData = await authCheck.json();
+            if (!authData.authenticated) {
+                alert('Your session has expired. Please log in again.');
+                showLogin();
+                return;
+            }
+        } catch (authError) {
+            console.error('Auth check failed:', authError);
+            alert('Authentication check failed. Please log in again.');
+            showLogin();
+            return;
+        }
+        
+        const manualPostUrl = document.getElementById('instagram-manual-url').value.trim();
+        const config = {
+            autoFetch: false, // Always false - we only use manual URLs
+            manualPostUrl: manualPostUrl || undefined
+        };
         
         try {
             const response = await fetch(`${API_BASE}/instagram-config`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                credentials: 'include', // Include cookies for session authentication
+                credentials: 'include',
                 body: JSON.stringify(config)
             });
             
-            console.log('Instagram config response status:', response.status);
+            if (response.status === 401) {
+                alert('Your session has expired. Please log in again.');
+                showLogin();
+                return;
+            }
             
             if (!response.ok) {
+                const errorText = await response.text();
+                console.error('Error response:', errorText);
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
             
             const result = await response.json();
-            console.log('Instagram config save result:', result);
             
             if (result.success) {
-                // Check if homepage post was updated
-                const autoFetch = document.getElementById('instagram-auto-fetch').checked;
-                const manualUrl = document.getElementById('instagram-manual-url').value.trim();
-                
                 let message = 'Instagram configuration saved successfully!';
-                
-                if (!autoFetch && manualUrl) {
-                    // Manual mode with URL - post should update on homepage
-                    message += '\n\nThe homepage post should update within 30 seconds. If it doesn\'t appear, please refresh the homepage.';
-                } else if (autoFetch) {
-                    // Auto-fetch mode - post will update automatically
-                    message += '\n\nThe homepage will automatically fetch the latest post.';
+                if (manualPostUrl) {
+                    message += '\n\nThe homepage post will update within 30 seconds. If it doesn\'t appear, please refresh the homepage.';
+                    updateInstagramPreview(manualPostUrl);
                 } else {
-                    // No URL set
-                    message += '\n\nNote: No manual URL is set. The homepage will show a placeholder until a post URL is configured.';
+                    message += '\n\nNo post URL is set. The homepage will show a placeholder until a post URL is configured.';
+                    updateInstagramPreview(null);
                 }
-                
                 alert(message);
-                loadDashboardData(); // Refresh dashboard to show updated status
+                loadDashboardData();
             } else {
                 throw new Error('Save failed');
             }
@@ -229,76 +318,76 @@ if (instagramForm) {
             alert('Failed to save Instagram configuration. Please check the console for details.');
         }
     });
+    
+    // Update preview when URL changes
+    const manualUrlField = document.getElementById('instagram-manual-url');
+    if (manualUrlField) {
+        manualUrlField.addEventListener('input', function() {
+            const url = this.value.trim();
+            if (url && url.includes('instagram.com/p/')) {
+                updateInstagramPreview(url);
+            } else {
+                updateInstagramPreview(null);
+            }
+        });
+    }
 } else {
     console.error('Instagram form not found');
 }
 
-// Add event listener for autofetch checkbox to toggle manual URL field
-const autoFetchCheckbox = document.getElementById('instagram-auto-fetch');
-if (autoFetchCheckbox) {
-    autoFetchCheckbox.addEventListener('change', toggleInstagramFields);
+// Update Instagram preview
+function updateInstagramPreview(postUrl) {
+    const preview = document.getElementById('instagram-preview');
+    if (!preview) return;
+    
+    if (postUrl && postUrl.includes('instagram.com/p/')) {
+        // Clean URL
+        const cleanUrl = cleanInstagramUrl(postUrl);
+        preview.innerHTML = `
+            <blockquote class="instagram-media" 
+                data-instgrm-permalink="${cleanUrl}" 
+                data-instgrm-version="14"
+                style="background:#FFF; border:0; border-radius:10px; box-shadow:0 0 1px 0 rgba(0,0,0,0.5),0 1px 10px 0 rgba(0,0,0,0.15); margin: 1px; max-width:540px; min-width:326px; padding:0; width:99.375%; width:-webkit-calc(100% - 2px); width:calc(100% - 2px);">
+            </blockquote>
+            <p style="margin-top: 1rem; color: #666; font-size: 0.9em;">Preview of how the post will appear on the homepage</p>
+        `;
+        
+        // Load Instagram embed script if needed
+        if (!window.instgrm) {
+            const script = document.createElement('script');
+            script.src = 'https://www.instagram.com/embed.js';
+            script.async = true;
+            script.onload = function() {
+                if (window.instgrm && window.instgrm.Embeds) {
+                    window.instgrm.Embeds.process();
+                }
+            };
+            document.body.appendChild(script);
+        } else {
+            if (window.instgrm.Embeds) {
+                window.instgrm.Embeds.process();
+            }
+        }
+    } else {
+        preview.innerHTML = '<p style="color: #666;">Enter a valid Instagram post URL above to see a preview</p>';
+    }
 }
 
-// Toggle Instagram form fields based on autofetch checkbox
-function toggleInstagramFields() {
-    const autoFetch = document.getElementById('instagram-auto-fetch').checked;
-    const manualUrlField = document.getElementById('instagram-manual-url');
-    const manualUrlLabel = manualUrlField ? manualUrlField.previousElementSibling : null;
-    const accessTokenField = document.getElementById('instagram-access-token');
-    const accessTokenLabel = accessTokenField ? accessTokenField.previousElementSibling : null;
-    const userIdField = document.getElementById('instagram-user-id');
-    const userIdLabel = userIdField ? userIdField.previousElementSibling : null;
-    
-    if (autoFetch) {
-        // Auto-fetch enabled: disable manual URL, enable API fields
-        if (manualUrlField) {
-            manualUrlField.disabled = true;
-            manualUrlField.required = false;
-            manualUrlField.style.opacity = '0.5';
-            manualUrlField.placeholder = 'Not needed when auto-fetch is enabled';
+// Clean Instagram URL
+function cleanInstagramUrl(url) {
+    try {
+        const urlObj = new URL(url);
+        let pathname = urlObj.pathname;
+        if (!pathname.endsWith('/')) {
+            pathname += '/';
         }
-        if (manualUrlLabel) manualUrlLabel.style.opacity = '0.5';
-        
-        if (accessTokenField) {
-            accessTokenField.disabled = false;
-            accessTokenField.required = false;
-            accessTokenField.style.opacity = '1';
-            accessTokenField.placeholder = 'Optional: For API access';
+        return `${urlObj.protocol}//${urlObj.host}${pathname}`;
+    } catch (e) {
+        let cleaned = url.split('?')[0].split('#')[0];
+        if (!cleaned.endsWith('/')) {
+            cleaned += '/';
         }
-        if (accessTokenLabel) accessTokenLabel.style.opacity = '1';
-        
-        if (userIdField) {
-            userIdField.disabled = false;
-            userIdField.required = false;
-            userIdField.style.opacity = '1';
-            userIdField.placeholder = 'Optional: For API access';
-        }
-        if (userIdLabel) userIdLabel.style.opacity = '1';
-    } else {
-        // Auto-fetch disabled: enable manual URL, disable API fields
-        if (manualUrlField) {
-            manualUrlField.disabled = false;
-            manualUrlField.required = false;
-            manualUrlField.style.opacity = '1';
-            manualUrlField.placeholder = 'https://www.instagram.com/p/POST_ID/';
-        }
-        if (manualUrlLabel) manualUrlLabel.style.opacity = '1';
-        
-        if (accessTokenField) {
-            accessTokenField.disabled = true;
-            accessTokenField.required = false;
-            accessTokenField.style.opacity = '0.5';
-            accessTokenField.placeholder = 'Not needed when using manual URL';
-        }
-        if (accessTokenLabel) accessTokenLabel.style.opacity = '0.5';
-        
-        if (userIdField) {
-            userIdField.disabled = true;
-            userIdField.required = false;
-            userIdField.style.opacity = '0.5';
-            userIdField.placeholder = 'Not needed when using manual URL';
-        }
-        if (userIdLabel) userIdLabel.style.opacity = '0.5';
+        return cleaned;
     }
 }
 
@@ -306,11 +395,12 @@ function toggleInstagramFields() {
 async function loadInstagramConfig() {
     try {
         const config = await fetch(`${API_BASE}/instagram-config`).then(r => r.json());
-        document.getElementById('instagram-auto-fetch').checked = config.autoFetch !== false; // Default to true if not set
         document.getElementById('instagram-manual-url').value = config.manualPostUrl || '';
-        document.getElementById('instagram-access-token').value = config.accessToken || '';
-        document.getElementById('instagram-user-id').value = config.userId || '';
-        toggleInstagramFields(); // Set initial state
+        
+        // Update preview if URL exists
+        if (config.manualPostUrl) {
+            updateInstagramPreview(config.manualPostUrl);
+        }
     } catch (error) {
         console.error('Failed to load Instagram config:', error);
     }

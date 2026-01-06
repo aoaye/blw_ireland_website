@@ -31,3 +31,8 @@ coverage/
 # Test files (if needed)
 # __tests__/
 
+# RTMP Server media files (HLS segments)
+media/
+*.m3u8
+*.ts
+

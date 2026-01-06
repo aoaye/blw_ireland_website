@@ -66,35 +66,23 @@
                 <div class="form-card">
                     <form id="stream-form">
                         <div class="form-group">
-                            <label for="rtmp-server-url">RTMP Server URL</label>
-                            <input type="text" id="rtmp-server-url" placeholder="rtmp://your-server.com:1935/live">
-                            <small>Server URL without the stream key (e.g., rtmp://server.com:1935/live)</small>
-                        </div>
-                        <div class="form-group">
-                            <label for="rtmp-stream-key">Stream Key</label>
-                            <input type="password" id="rtmp-stream-key" placeholder="your-stream-key">
-                            <small>Your RTMP stream key (kept secure and separate)</small>
-                        </div>
-                        <div class="form-group">
-                            <label for="stream-type">Stream Type</label>
-                            <select id="stream-type">
-                                <option value="rtmp">RTMP</option>
-                                <option value="hls">HLS</option>
-                                <option value="flv">FLV</option>
-                            </select>
-                            <small>For HLS/FLV, enter the full playback URL (server URL + stream key will be combined for RTMP)</small>
-                        </div>
-                        <div class="form-group">
-                            <label class="toggle-label">
-                                <span>Stream is currently live</span>
-                                <div class="toggle-wrapper">
-                                    <input type="checkbox" id="stream-live" class="toggle-switch">
-                                    <span class="toggle-slider"></span>
-                                </div>
-                            </label>
+                            <label for="embedded-stream-url">YouTube Stream URL or Video ID</label>
+                            <input type="text" id="embedded-stream-url" placeholder="https://youtube.com/watch?v=VIDEO_ID or just VIDEO_ID">
+                            <small>
+                                Enter the YouTube live stream URL or video ID.<br>
+                                <strong>Full URL:</strong> https://youtube.com/watch?v=VIDEO_ID<br>
+                                <strong>Or just the Video ID:</strong> VIDEO_ID<br><br>
+                                To get your stream URL: Go to YouTube Studio → Go Live → Copy the stream URL
+                            </small>
                         </div>
                         <button type="submit" class="btn btn-primary">Save Stream Configuration</button>
                     </form>
+                </div>
+                <div class="form-card" style="margin-top: 1.5rem;">
+                    <h3>Preview</h3>
+                    <div id="stream-preview" style="min-height: 300px; padding: 1rem; background: var(--light-bg); border-radius: 5px;">
+                        <p style="color: #666;">Configure a YouTube stream URL above to see a preview</p>
+                    </div>
                 </div>
             </section>
 
@@ -104,28 +92,21 @@
                 <div class="form-card">
                     <form id="instagram-form">
                         <div class="form-group">
-                            <label class="toggle-label">
-                                <span>Automatically fetch latest post</span>
-                                <div class="toggle-wrapper">
-                                    <input type="checkbox" id="instagram-auto-fetch" class="toggle-switch">
-                                    <span class="toggle-slider"></span>
-                                </div>
-                            </label>
-                        </div>
-                        <div class="form-group">
-                            <label for="instagram-manual-url">Manual Post URL (if not using auto-fetch)</label>
+                            <label for="instagram-manual-url">Instagram Post URL</label>
                             <input type="text" id="instagram-manual-url" placeholder="https://www.instagram.com/p/POST_ID/">
-                        </div>
-                        <div class="form-group">
-                            <label for="instagram-access-token">Instagram Access Token (for auto-fetch)</label>
-                            <input type="password" id="instagram-access-token" placeholder="Optional: For API access">
-                        </div>
-                        <div class="form-group">
-                            <label for="instagram-user-id">Instagram User ID (for auto-fetch)</label>
-                            <input type="text" id="instagram-user-id" placeholder="Optional: For API access">
+                            <small>
+                                Enter the full URL of the Instagram post you want to display on the homepage.<br>
+                                To get a post URL: Go to the Instagram post → Click three dots (⋯) → Copy Link
+                            </small>
                         </div>
                         <button type="submit" class="btn btn-primary">Save Instagram Configuration</button>
                     </form>
+                </div>
+                <div class="form-card" style="margin-top: 1.5rem;">
+                    <h3>Preview</h3>
+                    <div id="instagram-preview" style="min-height: 100px; padding: 1rem; background: var(--light-bg); border-radius: 5px;">
+                        <p style="color: #666;">Configure a post URL above to see a preview</p>
+                    </div>
                 </div>
             </section>
 
