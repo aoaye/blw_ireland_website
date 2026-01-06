@@ -65,7 +65,10 @@
 }
 
 body {
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    font-family: "Josefin Sans", sans-serif;
+    font-optical-sizing: auto;
+    font-weight: 400;
+    font-style: normal;
     line-height: 1.6;
     color: var(--text-color);
     background-color: var(--bg-color);
@@ -153,9 +156,9 @@ body {
 }
 
 .logo h1 {
-    font-family: 'Wensley', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    font-family: 'Boulia', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     font-size: 1.5rem;
-    font-weight: 600;
+    font-weight: normal;
     margin: 0;
 }
 
@@ -277,11 +280,18 @@ body {
 }
 
 .hero-content p {
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    font-family: "Josefin Sans", sans-serif;
+    font-optical-sizing: auto;
     font-size: 1.3rem;
     margin-bottom: 2rem;
     opacity: 0.9;
     animation: fadeInUp 0.8s ease 0.2s both;
+}
+
+/* Headings use Josefin Sans, except hero text and logo */
+h1, h2, h3, h4, h5, h6 {
+    font-family: "Josefin Sans", sans-serif;
+    font-optical-sizing: auto;
 }
 
 .cta-button {
@@ -912,13 +922,14 @@ body {
 
 /* Chat Section - Inline */
 .chat-section-inline {
-    background: var(--white);
+    background: var(--card-bg);
     border-radius: 10px;
     box-shadow: var(--shadow);
     display: flex;
     flex-direction: column;
     height: fit-content;
     max-height: 600px;
+    transition: background-color 0.3s ease;
 }
 
 .chat-header {
