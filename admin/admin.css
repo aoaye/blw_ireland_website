@@ -378,6 +378,20 @@ body {
     margin-top: 1.5rem;
 }
 
+.fellowships-list-container {
+    margin-bottom: 1rem;
+}
+
+.no-fellowships-message {
+    padding: 1rem;
+    color: #666;
+    font-style: italic;
+    text-align: center;
+    background: var(--light);
+    border-radius: 5px;
+    margin-bottom: 0.5rem;
+}
+
 .fellowship-item {
     display: flex;
     align-items: center;
@@ -386,10 +400,81 @@ body {
     background: var(--light);
     border-radius: 5px;
     margin-bottom: 0.5rem;
+    transition: background-color 0.2s ease;
+}
+
+.fellowship-item:hover {
+    background: #f0f0f0;
 }
 
 .fellowship-item input {
     flex: 1;
+    padding: 0.5rem;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 0.95rem;
+}
+
+.fellowship-item input:focus {
+    outline: none;
+    border-color: var(--secondary);
+    box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+}
+
+.zone-structure-save-section {
+    margin-top: 2rem;
+    padding-top: 2rem;
+    border-top: 2px solid var(--light);
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+#save-zone-structure {
+    min-width: 150px;
+}
+
+#save-zone-structure:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+#save-zone-structure.has-changes {
+    background: var(--secondary);
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.8; }
+}
+
+.zone-structure-status {
+    font-size: 0.9rem;
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    transition: all 0.3s ease;
+}
+
+.zone-structure-status.has-changes {
+    color: #e67e22;
+    background: #fff3e0;
+}
+
+.zone-structure-status.saving {
+    color: #3498db;
+    background: #e3f2fd;
+}
+
+.zone-structure-status.saved {
+    color: #27ae60;
+    background: #e8f5e9;
+}
+
+.zone-structure-status.error {
+    color: #e74c3c;
+    background: #ffebee;
 }
 
 /* Modal */

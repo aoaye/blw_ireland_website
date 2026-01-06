@@ -762,14 +762,17 @@ document.getElementById('cancel-event').addEventListener('click', () => {
 });
 
 // Zone Structure Management
+let zoneStructureData = null;
+let zoneStructureChanged = false;
+
 async function loadZoneStructure() {
     try {
-        const zoneData = await fetch(`${API_BASE}/zone-data`).then(r => r.json());
+        zoneStructureData = await fetch(`${API_BASE}/zone-data`).then(r => r.json());
         const container = document.getElementById('zone-groups');
         container.innerHTML = '';
         
         ['groupA', 'groupB', 'groupC'].forEach(groupKey => {
-            const group = zoneData[groupKey];
+            const group = zoneStructureData[groupKey];
             const card = document.createElement('div');
             card.className = 'zone-group-card';
             card.innerHTML = `
@@ -781,63 +784,242 @@ async function loadZoneStructure() {
                 </div>
                 <div class="fellowships-editor">
                     <h4>Fellowships</h4>
-                    <div id="fellowships-${groupKey}"></div>
-                    <button class="btn btn-primary btn-small" onclick="addFellowship('${groupKey}')">Add Fellowship</button>
+                    <div id="fellowships-${groupKey}" class="fellowships-list-container"></div>
+                    <button type="button" class="btn btn-primary btn-small" onclick="addFellowshipRow('${groupKey}')">+ Add Fellowship</button>
                 </div>
             `;
             container.appendChild(card);
             
             // Load fellowships
             const fellowshipsContainer = document.getElementById(`fellowships-${groupKey}`);
-            group.fellowships.forEach((fellowship, index) => {
-                const item = document.createElement('div');
-                item.className = 'fellowship-item';
-                item.innerHTML = `
-                    <input type="text" value="${fellowship}" onchange="updateFellowship('${groupKey}', ${index}, this.value)">
-                    <button class="btn btn-danger btn-small" onclick="removeFellowship('${groupKey}', ${index})">Remove</button>
-                `;
-                fellowshipsContainer.appendChild(item);
-            });
+            const fellowships = group.fellowships || [];
+            
+            if (fellowships.length === 0) {
+                fellowshipsContainer.innerHTML = '<p class="no-fellowships-message">No fellowships added yet. Click "Add Fellowship" to get started.</p>';
+            } else {
+                fellowships.forEach((fellowship, index) => {
+                    const item = createFellowshipRow(groupKey, index, fellowship);
+                    fellowshipsContainer.appendChild(item);
+                });
+            }
         });
+        
+        // Add save button at the bottom
+        const saveButton = document.createElement('div');
+        saveButton.className = 'zone-structure-save-section';
+        saveButton.innerHTML = `
+            <button id="save-zone-structure" class="btn btn-primary" onclick="saveZoneStructure()" disabled>
+                Save Changes
+            </button>
+            <span id="zone-structure-status" class="zone-structure-status"></span>
+        `;
+        container.appendChild(saveButton);
+        
+        zoneStructureChanged = false;
+        updateSaveButton();
     } catch (error) {
         console.error('Failed to load zone structure:', error);
+        alert('Failed to load zone structure. Please refresh the page.');
     }
 }
 
-window.addFellowship = (groupKey) => {
-    const container = document.getElementById(`fellowships-${groupKey}`);
+function createFellowshipRow(groupKey, index, value = '') {
     const item = document.createElement('div');
     item.className = 'fellowship-item';
-    const index = container.children.length;
+    item.dataset.groupKey = groupKey;
+    item.dataset.index = index;
     item.innerHTML = `
-        <input type="text" placeholder="Fellowship name" onchange="updateFellowship('${groupKey}', ${index}, this.value)">
-        <button class="btn btn-danger btn-small" onclick="removeFellowship('${groupKey}', ${index})">Remove</button>
+        <input type="text" 
+               class="fellowship-input" 
+               value="${value}" 
+               placeholder="Enter fellowship name"
+               oninput="markZoneStructureChanged()">
+        <button type="button" class="btn btn-danger btn-small" onclick="removeFellowshipRow(this)">
+            Remove
+        </button>
     `;
+    return item;
+}
+
+window.addFellowshipRow = function(groupKey) {
+    const container = document.getElementById(`fellowships-${groupKey}`);
+    
+    // Remove "no fellowships" message if present
+    const noFellowshipsMsg = container.querySelector('.no-fellowships-message');
+    if (noFellowshipsMsg) {
+        noFellowshipsMsg.remove();
+    }
+    
+    // Get current count
+    const currentCount = container.querySelectorAll('.fellowship-item').length;
+    const item = createFellowshipRow(groupKey, currentCount, '');
     container.appendChild(item);
+    
+    // Focus on the new input
+    const input = item.querySelector('.fellowship-input');
+    if (input) {
+        input.focus();
+    }
+    
+    markZoneStructureChanged();
 };
 
-window.updateFellowship = async (groupKey, index, value) => {
-    const zoneData = await fetch(`${API_BASE}/zone-data`).then(r => r.json());
-    if (!zoneData[groupKey].fellowships) zoneData[groupKey].fellowships = [];
-    zoneData[groupKey].fellowships[index] = value;
-        await fetch(`${API_BASE}/zone-data`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            credentials: 'include', // Include cookies for session authentication
-            body: JSON.stringify(zoneData)
-        });
+window.removeFellowshipRow = function(button) {
+    const item = button.closest('.fellowship-item');
+    if (!item) return;
+    
+    if (confirm('Are you sure you want to remove this fellowship?')) {
+        const container = item.parentElement;
+        item.remove();
+        
+        // If no items left, show message
+        if (container.querySelectorAll('.fellowship-item').length === 0) {
+            container.innerHTML = '<p class="no-fellowships-message">No fellowships added yet. Click "Add Fellowship" to get started.</p>';
+        }
+        
+        markZoneStructureChanged();
+    }
 };
 
-window.removeFellowship = async (groupKey, index) => {
-    const zoneData = await fetch(`${API_BASE}/zone-data`).then(r => r.json());
-    zoneData[groupKey].fellowships.splice(index, 1);
-        await fetch(`${API_BASE}/zone-data`, {
+function markZoneStructureChanged() {
+    zoneStructureChanged = true;
+    updateSaveButton();
+}
+
+function updateSaveButton() {
+    const saveButton = document.getElementById('save-zone-structure');
+    const statusSpan = document.getElementById('zone-structure-status');
+    
+    if (saveButton) {
+        saveButton.disabled = !zoneStructureChanged;
+        if (zoneStructureChanged) {
+            saveButton.classList.add('has-changes');
+        } else {
+            saveButton.classList.remove('has-changes');
+        }
+    }
+    
+    if (statusSpan) {
+        if (zoneStructureChanged) {
+            statusSpan.textContent = 'You have unsaved changes';
+            statusSpan.className = 'zone-structure-status has-changes';
+        } else {
+            statusSpan.textContent = '';
+            statusSpan.className = 'zone-structure-status';
+        }
+    }
+}
+
+window.saveZoneStructure = async function() {
+    if (!zoneStructureChanged || !zoneStructureData) {
+        return;
+    }
+    
+    // Check authentication
+    try {
+        const authCheck = await fetch(`${API_BASE}/admin/check-auth`, { credentials: 'include' });
+        const authData = await authCheck.json();
+        if (!authData.authenticated) {
+            alert('Your session has expired. Please log in again.');
+            showLogin();
+            return;
+        }
+    } catch (authError) {
+        console.error('Auth check failed:', authError);
+        alert('Authentication check failed. Please log in again.');
+        showLogin();
+        return;
+    }
+    
+    // Collect all fellowship data
+    ['groupA', 'groupB', 'groupC'].forEach(groupKey => {
+        const container = document.getElementById(`fellowships-${groupKey}`);
+        if (!container) return;
+        
+        const items = container.querySelectorAll('.fellowship-item');
+        const fellowships = [];
+        
+        items.forEach(item => {
+            const input = item.querySelector('.fellowship-input');
+            if (input && input.value.trim()) {
+                fellowships.push(input.value.trim());
+            }
+        });
+        
+        if (!zoneStructureData[groupKey]) {
+            zoneStructureData[groupKey] = {};
+        }
+        zoneStructureData[groupKey].fellowships = fellowships;
+    });
+    
+    // Save to server
+    try {
+        const saveButton = document.getElementById('save-zone-structure');
+        const statusSpan = document.getElementById('zone-structure-status');
+        
+        if (saveButton) {
+            saveButton.disabled = true;
+            saveButton.textContent = 'Saving...';
+        }
+        if (statusSpan) {
+            statusSpan.textContent = 'Saving changes...';
+            statusSpan.className = 'zone-structure-status saving';
+        }
+        
+        const response = await fetch(`${API_BASE}/zone-data`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
-            credentials: 'include', // Include cookies for session authentication
-            body: JSON.stringify(zoneData)
+            credentials: 'include',
+            body: JSON.stringify(zoneStructureData)
         });
-    loadZoneStructure();
+        
+        if (response.status === 401) {
+            alert('Your session has expired. Please log in again.');
+            showLogin();
+            return;
+        }
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`HTTP error! status: ${response.status} - ${errorText}`);
+        }
+        
+        // Success
+        zoneStructureChanged = false;
+        updateSaveButton();
+        
+        if (statusSpan) {
+            statusSpan.textContent = '✓ Changes saved successfully!';
+            statusSpan.className = 'zone-structure-status saved';
+            setTimeout(() => {
+                statusSpan.textContent = '';
+                statusSpan.className = 'zone-structure-status';
+            }, 3000);
+        }
+        
+        if (saveButton) {
+            saveButton.textContent = 'Save Changes';
+        }
+        
+        // Reload to ensure consistency
+        await loadZoneStructure();
+        
+    } catch (error) {
+        console.error('Error saving zone structure:', error);
+        alert(`Failed to save zone structure: ${error.message || 'Unknown error'}`);
+        
+        const saveButton = document.getElementById('save-zone-structure');
+        const statusSpan = document.getElementById('zone-structure-status');
+        
+        if (saveButton) {
+            saveButton.disabled = false;
+            saveButton.textContent = 'Save Changes';
+        }
+        if (statusSpan) {
+            statusSpan.textContent = '✗ Failed to save. Please try again.';
+            statusSpan.className = 'zone-structure-status error';
+        }
+    }
 };
 
 window.uploadGroupImage = async (groupKey, input) => {
