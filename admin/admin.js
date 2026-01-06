@@ -823,17 +823,28 @@ async function loadZoneStructure() {
     }
 }
 
-function createFellowshipRow(groupKey, index, value = '') {
+function createFellowshipRow(groupKey, index, fellowshipData = {}) {
+    // Handle both old format (string) and new format (object)
+    const name = typeof fellowshipData === 'string' ? fellowshipData : (fellowshipData.name || '');
+    const url = typeof fellowshipData === 'object' ? (fellowshipData.url || '') : '';
+    
     const item = document.createElement('div');
     item.className = 'fellowship-item';
     item.dataset.groupKey = groupKey;
     item.dataset.index = index;
     item.innerHTML = `
-        <input type="text" 
-               class="fellowship-input" 
-               value="${value}" 
-               placeholder="Enter fellowship name"
-               oninput="markZoneStructureChanged()">
+        <div class="fellowship-inputs">
+            <input type="text" 
+                   class="fellowship-name-input" 
+                   value="${name}" 
+                   placeholder="Fellowship name"
+                   oninput="markZoneStructureChanged()">
+            <input type="url" 
+                   class="fellowship-url-input" 
+                   value="${url}" 
+                   placeholder="URL (optional)"
+                   oninput="markZoneStructureChanged()">
+        </div>
         <button type="button" class="btn btn-danger btn-small" onclick="removeFellowshipRow(this)">
             Remove
         </button>
@@ -940,9 +951,19 @@ window.saveZoneStructure = async function() {
         const fellowships = [];
         
         items.forEach(item => {
-            const input = item.querySelector('.fellowship-input');
-            if (input && input.value.trim()) {
-                fellowships.push(input.value.trim());
+            const nameInput = item.querySelector('.fellowship-name-input');
+            const urlInput = item.querySelector('.fellowship-url-input');
+            
+            const name = nameInput ? nameInput.value.trim() : '';
+            const url = urlInput ? urlInput.value.trim() : '';
+            
+            if (name) {
+                // Create object with name and optional url
+                const fellowship = { name: name };
+                if (url) {
+                    fellowship.url = url;
+                }
+                fellowships.push(fellowship);
             }
         });
         

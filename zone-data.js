@@ -72,15 +72,42 @@ window.displayGroupImage = function(groupKey, imageUrl) {
 
 // Function to populate fellowships in the dropdown
 function populateFellowships() {
+    // Helper function to create fellowship item (supports both string and object format)
+    function createFellowshipElement(fellowship) {
+        const fellowshipItem = document.createElement('div');
+        fellowshipItem.className = 'fellowship-item';
+        
+        // Handle both old format (string) and new format (object)
+        if (typeof fellowship === 'string') {
+            fellowshipItem.textContent = fellowship;
+        } else {
+            const name = fellowship.name || '';
+            const url = fellowship.url || '';
+            
+            if (url) {
+                // Create a link if URL is provided
+                const link = document.createElement('a');
+                link.href = url;
+                link.target = '_blank';
+                link.rel = 'noopener noreferrer';
+                link.textContent = name;
+                link.className = 'fellowship-link';
+                fellowshipItem.appendChild(link);
+            } else {
+                // Just text if no URL
+                fellowshipItem.textContent = name;
+            }
+        }
+        
+        return fellowshipItem;
+    }
+    
     // Group A
     const groupAFellowships = document.querySelector('.group-dropdown:nth-of-type(1) .fellowships-list');
     if (groupAFellowships && zoneData.groupA.fellowships.length > 0) {
         groupAFellowships.innerHTML = '';
         zoneData.groupA.fellowships.forEach(fellowship => {
-            const fellowshipItem = document.createElement('div');
-            fellowshipItem.className = 'fellowship-item';
-            fellowshipItem.textContent = fellowship;
-            groupAFellowships.appendChild(fellowshipItem);
+            groupAFellowships.appendChild(createFellowshipElement(fellowship));
         });
     } else if (groupAFellowships && zoneData.groupA.fellowships.length === 0) {
         groupAFellowships.innerHTML = '<p class="fellowship-placeholder">Fellowships will be listed here</p>';
@@ -91,10 +118,7 @@ function populateFellowships() {
     if (groupBFellowships && zoneData.groupB.fellowships.length > 0) {
         groupBFellowships.innerHTML = '';
         zoneData.groupB.fellowships.forEach(fellowship => {
-            const fellowshipItem = document.createElement('div');
-            fellowshipItem.className = 'fellowship-item';
-            fellowshipItem.textContent = fellowship;
-            groupBFellowships.appendChild(fellowshipItem);
+            groupBFellowships.appendChild(createFellowshipElement(fellowship));
         });
     } else if (groupBFellowships && zoneData.groupB.fellowships.length === 0) {
         groupBFellowships.innerHTML = '<p class="fellowship-placeholder">Fellowships will be listed here</p>';
@@ -105,10 +129,7 @@ function populateFellowships() {
     if (groupCFellowships && zoneData.groupC.fellowships.length > 0) {
         groupCFellowships.innerHTML = '';
         zoneData.groupC.fellowships.forEach(fellowship => {
-            const fellowshipItem = document.createElement('div');
-            fellowshipItem.className = 'fellowship-item';
-            fellowshipItem.textContent = fellowship;
-            groupCFellowships.appendChild(fellowshipItem);
+            groupCFellowships.appendChild(createFellowshipElement(fellowship));
         });
     } else if (groupCFellowships && zoneData.groupC.fellowships.length === 0) {
         groupCFellowships.innerHTML = '<p class="fellowship-placeholder">Fellowships will be listed here</p>';
@@ -120,9 +141,20 @@ document.addEventListener('DOMContentLoaded', async function() {
     // Try to load from API first
     const apiData = await loadZoneDataFromAPI();
     if (apiData) {
-        zoneData.groupA.fellowships = apiData.groupA?.fellowships || [];
-        zoneData.groupB.fellowships = apiData.groupB?.fellowships || [];
-        zoneData.groupC.fellowships = apiData.groupC?.fellowships || [];
+        // Handle migration from old format (strings) to new format (objects)
+        function normalizeFellowships(fellowships) {
+            if (!Array.isArray(fellowships)) return [];
+            return fellowships.map(f => {
+                if (typeof f === 'string') {
+                    return { name: f };
+                }
+                return f;
+            });
+        }
+        
+        zoneData.groupA.fellowships = normalizeFellowships(apiData.groupA?.fellowships || []);
+        zoneData.groupB.fellowships = normalizeFellowships(apiData.groupB?.fellowships || []);
+        zoneData.groupC.fellowships = normalizeFellowships(apiData.groupC?.fellowships || []);
         
         // Update group images
         if (apiData.groupA?.image) {

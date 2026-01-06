@@ -118,9 +118,20 @@ async function updateZoneStructure() {
     if (typeof populateFellowships === 'function') {
         // Update the zoneData object that populateFellowships uses
         if (window.zoneData) {
-            window.zoneData.groupA.fellowships = zoneData.groupA?.fellowships || [];
-            window.zoneData.groupB.fellowships = zoneData.groupB?.fellowships || [];
-            window.zoneData.groupC.fellowships = zoneData.groupC?.fellowships || [];
+            // Handle migration from old format (strings) to new format (objects)
+            function normalizeFellowships(fellowships) {
+                if (!Array.isArray(fellowships)) return [];
+                return fellowships.map(f => {
+                    if (typeof f === 'string') {
+                        return { name: f };
+                    }
+                    return f;
+                });
+            }
+            
+            window.zoneData.groupA.fellowships = normalizeFellowships(zoneData.groupA?.fellowships || []);
+            window.zoneData.groupB.fellowships = normalizeFellowships(zoneData.groupB?.fellowships || []);
+            window.zoneData.groupC.fellowships = normalizeFellowships(zoneData.groupC?.fellowships || []);
             populateFellowships();
         }
     }

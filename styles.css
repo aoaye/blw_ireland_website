@@ -1436,6 +1436,18 @@ h1, h2, h3, h4, h5, h6 {
     background: #e8f4f8;
 }
 
+.fellowship-link {
+    color: var(--secondary-color);
+    text-decoration: none;
+    font-weight: 500;
+    transition: color 0.2s ease, text-decoration 0.2s ease;
+}
+
+.fellowship-link:hover {
+    color: var(--primary-color);
+    text-decoration: underline;
+}
+
 .fellowship-placeholder {
     padding: 1rem;
     color: #999;

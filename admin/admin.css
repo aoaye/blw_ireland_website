@@ -407,12 +407,27 @@ body {
     background: #f0f0f0;
 }
 
-.fellowship-item input {
+.fellowship-inputs {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
     flex: 1;
+}
+
+.fellowship-item input {
     padding: 0.5rem;
     border: 1px solid #ddd;
     border-radius: 4px;
     font-size: 0.95rem;
+}
+
+.fellowship-name-input {
+    width: 100%;
+}
+
+.fellowship-url-input {
+    width: 100%;
+    font-size: 0.85rem;
 }
 
 .fellowship-item input:focus {
