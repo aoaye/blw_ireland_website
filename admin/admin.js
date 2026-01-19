@@ -1180,11 +1180,16 @@ async function applyImageToPurpose(imageUrl, purpose) {
             if (!config.heroBackgrounds.includes(imageUrl)) {
                 config.heroBackgrounds.push(imageUrl);
             }
+            // Clean up: Remove old heroBackground field when heroBackgrounds is populated
+            const updateConfig = { ...config, heroBackgrounds: config.heroBackgrounds };
+            if (updateConfig.heroBackgrounds && updateConfig.heroBackgrounds.length > 0) {
+                delete updateConfig.heroBackground;
+            }
             await fetch(`${API_BASE}/config`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
-                body: JSON.stringify({ ...config, heroBackgrounds: config.heroBackgrounds })
+                body: JSON.stringify(updateConfig)
             });
         } else if (purpose.startsWith('group-')) {
             const groupKey = purpose === 'group-a' ? 'groupA' : purpose === 'group-b' ? 'groupB' : 'groupC';
@@ -1216,11 +1221,16 @@ async function applyImagesToPurpose(imageUrls, purpose) {
                     config.heroBackgrounds.push(url);
                 }
             });
+            // Clean up: Remove old heroBackground field when heroBackgrounds is populated
+            const updateConfig = { ...config, heroBackgrounds: config.heroBackgrounds };
+            if (updateConfig.heroBackgrounds && updateConfig.heroBackgrounds.length > 0) {
+                delete updateConfig.heroBackground;
+            }
             await fetch(`${API_BASE}/config`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
-                body: JSON.stringify({ ...config, heroBackgrounds: config.heroBackgrounds })
+                body: JSON.stringify(updateConfig)
             });
         }
     } catch (error) {
@@ -1328,13 +1338,22 @@ let heroBackgroundImages = [];
 async function loadHeroBackgroundPreview() {
     try {
         const config = await fetch(`${API_BASE}/config`).then(r => r.json());
-        const heroBackgrounds = config.heroBackgrounds || (config.heroBackground ? [config.heroBackground] : []);
+        // Always prioritize heroBackgrounds array if it exists and has items
+        let heroBackgrounds = [];
+        if (config.heroBackgrounds && Array.isArray(config.heroBackgrounds) && config.heroBackgrounds.length > 0) {
+            heroBackgrounds = config.heroBackgrounds;
+        } else if (config.heroBackground) {
+            heroBackgrounds = [config.heroBackground];
+        }
         
         const previewSection = document.getElementById('hero-background-preview');
         const slideshow = document.getElementById('hero-slideshow');
+        const statusBadge = document.getElementById('hero-slideshow-status');
+        const imageCountSpan = document.getElementById('slideshow-image-count');
         
         if (heroBackgrounds.length === 0) {
             previewSection.style.display = 'none';
+            if (statusBadge) statusBadge.style.display = 'none';
             return;
         }
         
@@ -1342,9 +1361,27 @@ async function loadHeroBackgroundPreview() {
         heroBackgroundImages = heroBackgrounds;
         currentHeroSlideIndex = 0;
         
+        // Update status badge
+        updateSlideshowStatus(heroBackgrounds.length);
+        
         updateHeroSlideshow();
     } catch (error) {
         console.error('Error loading hero background preview:', error);
+    }
+}
+
+// Update slideshow status badge
+function updateSlideshowStatus(imageCount) {
+    const statusBadge = document.getElementById('hero-slideshow-status');
+    const imageCountSpan = document.getElementById('slideshow-image-count');
+    
+    if (statusBadge && imageCountSpan) {
+        if (imageCount > 0) {
+            statusBadge.style.display = 'flex';
+            imageCountSpan.textContent = `(${imageCount} image${imageCount !== 1 ? 's' : ''})`;
+        } else {
+            statusBadge.style.display = 'none';
+        }
     }
 }
 
@@ -1355,6 +1392,7 @@ function updateHeroSlideshow() {
     if (heroBackgroundImages.length === 0) {
         slideshow.innerHTML = '<p style="text-align: center; padding: 2rem;">No hero background images</p>';
         counter.textContent = '0 / 0';
+        updateSlideshowStatus(0);
         return;
     }
     
@@ -1362,11 +1400,14 @@ function updateHeroSlideshow() {
     slideshow.innerHTML = `
         <img src="${currentImage}" alt="Hero Background ${currentHeroSlideIndex + 1}" style="width: 100%; max-height: 400px; object-fit: contain; border-radius: 5px;">
     `;
-    counter.textContent = `${currentHeroSlideIndex + 1} / ${heroBackgroundImages.length}`;
+    counter.textContent = `Preview: Image ${currentHeroSlideIndex + 1} of ${heroBackgroundImages.length}`;
     
     // Update button states
     document.getElementById('prev-hero-slide').disabled = currentHeroSlideIndex === 0;
     document.getElementById('next-hero-slide').disabled = currentHeroSlideIndex === heroBackgroundImages.length - 1;
+    
+    // Update status badge
+    updateSlideshowStatus(heroBackgroundImages.length);
 }
 
 // Hero slideshow navigation - set up event listeners when DOM is ready
@@ -1424,6 +1465,7 @@ function setupHeroSlideshowListeners() {
                 }
                 
                 updateHeroSlideshow();
+                updateSlideshowStatus(heroBackgroundImages.length);
                 loadImages(); // Refresh image list
             } catch (error) {
                 console.error('Error removing hero image:', error);

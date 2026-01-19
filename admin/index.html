@@ -133,13 +133,18 @@
             <!-- Images Section -->
             <section id="section-images" class="content-section">
                 <h2>Image Management</h2>
+                <div id="hero-slideshow-status" class="slideshow-status-badge" style="display: none;">
+                    <span class="status-icon">✓</span>
+                    <span class="status-text">Slideshow Active</span>
+                    <span id="slideshow-image-count" class="status-count"></span>
+                </div>
                 <div class="image-upload-section">
                     <h3>Upload Images</h3>
                     <form id="image-upload-form" enctype="multipart/form-data">
                         <div class="form-group">
                             <label for="image-file">Select Image(s)</label>
                             <input type="file" id="image-file" accept="image/*" required>
-                            <small id="file-hint">For Hero Background, you can select multiple images</small>
+                            <small id="file-hint">For Hero Background, you can select multiple images for the slideshow</small>
                         </div>
                         <div class="form-group">
                             <label for="image-purpose">Image Purpose</label>
@@ -155,7 +160,11 @@
                     </form>
                 </div>
                 <div id="hero-background-preview" class="hero-preview-section" style="display: none;">
-                    <h3>Hero Background Slideshow Preview</h3>
+                    <div class="hero-preview-header">
+                        <h3>Hero Background Slideshow</h3>
+                        <span class="active-badge">Active on Website</span>
+                    </div>
+                    <p class="slideshow-info">The images below will automatically cycle through on your website's hero section every 5 seconds.</p>
                     <div class="hero-slideshow-container">
                         <div id="hero-slideshow" class="hero-slideshow"></div>
                         <div class="hero-slideshow-controls">

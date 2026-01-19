@@ -320,6 +320,19 @@ app.get('/api/config', async (req, res) => {
         safeConfig.heroBackgrounds = [];
     }
     
+    // Clean up: If heroBackgrounds array is populated, ensure old heroBackground is removed
+    if (safeConfig.heroBackgrounds && Array.isArray(safeConfig.heroBackgrounds) && safeConfig.heroBackgrounds.length > 0) {
+        if (safeConfig.heroBackground) {
+            delete safeConfig.heroBackground;
+            // Also clean up in the saved config file
+            const fullConfig = await readJSON(CONFIG_FILE);
+            if (fullConfig.heroBackground) {
+                delete fullConfig.heroBackground;
+                await writeJSON(CONFIG_FILE, fullConfig);
+            }
+        }
+    }
+    
     res.json(safeConfig);
 });
 
@@ -338,6 +351,12 @@ app.put('/api/config', requireAuth, async (req, res) => {
     }
     
         Object.assign(config, updates);
+        
+        // Clean up: If heroBackgrounds array is populated, remove old heroBackground field
+        if (config.heroBackgrounds && Array.isArray(config.heroBackgrounds) && config.heroBackgrounds.length > 0) {
+            delete config.heroBackground;
+        }
+        
         await writeJSON(CONFIG_FILE, config);
         res.json({ success: true });
     } catch (error) {

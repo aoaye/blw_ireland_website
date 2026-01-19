@@ -593,9 +593,66 @@ body {
     margin: 2rem 0;
 }
 
-.hero-preview-section h3 {
+.hero-preview-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.hero-preview-header h3 {
     color: var(--primary);
+    margin: 0;
+}
+
+.active-badge {
+    background: var(--success);
+    color: var(--white);
+    padding: 0.4rem 0.8rem;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    display: inline-block;
+}
+
+.slideshow-info {
+    color: #666;
+    font-size: 0.9rem;
     margin-bottom: 1.5rem;
+    padding: 0.75rem;
+    background: #f8f9fa;
+    border-left: 3px solid var(--secondary);
+    border-radius: 4px;
+}
+
+.slideshow-status-badge {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: linear-gradient(135deg, var(--success) 0%, #229954 100%);
+    color: var(--white);
+    padding: 0.75rem 1.25rem;
+    border-radius: 8px;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 2px 8px rgba(39, 174, 96, 0.3);
+    font-weight: 600;
+}
+
+.slideshow-status-badge .status-icon {
+    font-size: 1.2rem;
+    font-weight: bold;
+}
+
+.slideshow-status-badge .status-text {
+    font-size: 1rem;
+}
+
+.slideshow-status-badge .status-count {
+    font-size: 0.9rem;
+    opacity: 0.95;
+    font-weight: 500;
 }
 
 .hero-slideshow-container {

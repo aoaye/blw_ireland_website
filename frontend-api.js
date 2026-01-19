@@ -164,8 +164,14 @@ async function updateSiteContent() {
     // Update hero background slideshow
     const heroSection = document.querySelector('.hero');
     if (heroSection) {
-        // Support both new array format and old single image format
-        const heroImages = config.heroBackgrounds || (config.heroBackground ? [config.heroBackground] : []);
+        // Always prioritize heroBackgrounds array if it exists and has items
+        // Only fall back to heroBackground if heroBackgrounds is empty or missing
+        let heroImages = [];
+        if (config.heroBackgrounds && Array.isArray(config.heroBackgrounds) && config.heroBackgrounds.length > 0) {
+            heroImages = config.heroBackgrounds;
+        } else if (config.heroBackground) {
+            heroImages = [config.heroBackground];
+        }
         
         if (heroImages.length > 0) {
             // Prepare image URLs with proper origin
@@ -200,7 +206,14 @@ async function updateSiteContent() {
     // Update about page hero background slideshow (if using same images as homepage)
     const aboutHero = document.querySelector('.about-hero');
     if (aboutHero) {
-        const heroImages = config.heroBackgrounds || (config.heroBackground ? [config.heroBackground] : []);
+        // Always prioritize heroBackgrounds array if it exists and has items
+        // Only fall back to heroBackground if heroBackgrounds is empty or missing
+        let heroImages = [];
+        if (config.heroBackgrounds && Array.isArray(config.heroBackgrounds) && config.heroBackgrounds.length > 0) {
+            heroImages = config.heroBackgrounds;
+        } else if (config.heroBackground) {
+            heroImages = [config.heroBackground];
+        }
         if (heroImages.length > 0) {
             const imageUrls = heroImages.map(img => {
                 return window.location.origin.includes('localhost')
