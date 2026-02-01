@@ -659,7 +659,20 @@ async function loadEvents() {
         const container = document.getElementById('events-list');
         container.innerHTML = '';
         
-        events.forEach(event => {
+        // Sort events chronologically (closest first) as a safety measure
+        const sortedEvents = [...events].sort((a, b) => {
+            if (!a.date && !b.date) return 0;
+            if (!a.date) return 1;
+            if (!b.date) return -1;
+            return new Date(a.date) - new Date(b.date);
+        });
+        
+        if (sortedEvents.length === 0) {
+            container.innerHTML = '<p style="color: #666; text-align: center; padding: 2rem;">No upcoming events. Add an event to get started!</p>';
+            return;
+        }
+        
+        sortedEvents.forEach(event => {
             const card = document.createElement('div');
             card.className = 'event-card';
             card.innerHTML = `

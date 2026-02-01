@@ -88,9 +88,39 @@ async function updateHomepageEvents() {
     const eventsContainer = document.querySelector('.events-list');
     if (!eventsContainer) return;
     
+    // Filter out past events and sort chronologically (closest first)
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+    
+    const upcomingEvents = events
+        .filter(event => {
+            if (!event.date) return true; // Recurring events without dates are always shown
+            const eventDate = new Date(event.date);
+            eventDate.setHours(0, 0, 0, 0);
+            return eventDate >= now;
+        })
+        .sort((a, b) => {
+            if (!a.date && !b.date) return 0;
+            if (!a.date) return 1; // Events without dates go to end
+            if (!b.date) return -1;
+            return new Date(a.date) - new Date(b.date);
+        });
+    
+    if (upcomingEvents.length === 0) {
+        eventsContainer.innerHTML = `
+            <div class="event-card">
+                <div class="event-details">
+                    <h3>No upcoming events</h3>
+                    <p>Check back soon for upcoming events!</p>
+                </div>
+            </div>
+        `;
+        return;
+    }
+    
     eventsContainer.innerHTML = '';
     
-    events.forEach(event => {
+    upcomingEvents.forEach(event => {
         const dateInfo = event.date ? formatEventDate(event.date) : null;
         const eventCard = document.createElement('div');
         eventCard.className = 'event-card';

@@ -151,6 +151,13 @@ async function initializeData() {
             await fs.writeFile(EVENTS_FILE, JSON.stringify([], null, 2));
         }
         
+        // Initialize archived events file
+        try {
+            await fs.access(path.join(DATA_DIR, 'archived-events.json'));
+        } catch {
+            await fs.writeFile(path.join(DATA_DIR, 'archived-events.json'), JSON.stringify([], null, 2));
+        }
+        
         // Initialize zone data
         try {
             await fs.access(ZONE_DATA_FILE);
@@ -376,8 +383,71 @@ app.put('/api/config', requireAuth, async (req, res) => {
 // ==================== EVENTS ROUTES ====================
 
 app.get('/api/events', async (req, res) => {
-    const events = await readJSON(EVENTS_FILE) || [];
-    res.json(events);
+    let events = await readJSON(EVENTS_FILE) || [];
+    
+    // Filter out past events and sort chronologically
+    const now = new Date();
+    now.setHours(0, 0, 0, 0); // Set to start of today for date comparison
+    
+    // Separate upcoming and past events
+    const upcomingEvents = [];
+    const pastEvents = [];
+    
+    events.forEach(event => {
+        if (!event.date) {
+            // Events without dates are considered upcoming (recurring events)
+            upcomingEvents.push(event);
+            return;
+        }
+        
+        const eventDate = new Date(event.date);
+        eventDate.setHours(0, 0, 0, 0);
+        
+        // If event date is today or in the future, it's upcoming
+        if (eventDate >= now) {
+            upcomingEvents.push(event);
+        } else {
+            pastEvents.push(event);
+        }
+    });
+    
+    // Sort upcoming events by date (closest first)
+    upcomingEvents.sort((a, b) => {
+        if (!a.date && !b.date) return 0;
+        if (!a.date) return 1; // Events without dates go to end
+        if (!b.date) return -1;
+        return new Date(a.date) - new Date(b.date);
+    });
+    
+    // Archive past events (save them to archived events file)
+    if (pastEvents.length > 0) {
+        const ARCHIVED_EVENTS_FILE = path.join(DATA_DIR, 'archived-events.json');
+        let archivedEvents = [];
+        try {
+            archivedEvents = await readJSON(ARCHIVED_EVENTS_FILE);
+        } catch {
+            archivedEvents = [];
+        }
+        
+        // Add past events to archived (avoid duplicates)
+        pastEvents.forEach(pastEvent => {
+            if (!archivedEvents.find(ae => ae.id === pastEvent.id)) {
+                archivedEvents.push({
+                    ...pastEvent,
+                    archivedAt: new Date().toISOString()
+                });
+            }
+        });
+        
+        await writeJSON(ARCHIVED_EVENTS_FILE, archivedEvents);
+        
+        // Remove past events from active events
+        const activeEventIds = new Set(upcomingEvents.map(e => e.id));
+        events = events.filter(e => activeEventIds.has(e.id));
+        await writeJSON(EVENTS_FILE, events);
+    }
+    
+    res.json(upcomingEvents);
 });
 
 app.post('/api/events', requireAuth, async (req, res) => {
