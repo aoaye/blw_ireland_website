@@ -66,17 +66,29 @@ app.use('/api', (req, res, next) => {
     next();
 });
 
+// Data storage paths - Support Railway persistent volumes
+// Railway mounts volumes at /data, or use environment variable if set
+// Check for Railway environment or explicit volume path
+const VOLUME_BASE = process.env.RAILWAY_VOLUME_MOUNT_PATH || process.env.VOLUME_PATH || '/data';
+// Use volume if explicitly set via env var, or if we're in Railway environment
+const USE_VOLUME = !!(process.env.RAILWAY_VOLUME_MOUNT_PATH || process.env.VOLUME_PATH || process.env.RAILWAY_ENVIRONMENT);
+
+const DATA_DIR = USE_VOLUME ? path.join(VOLUME_BASE, 'data') : 'data';
+const UPLOADS_DIR = USE_VOLUME ? path.join(VOLUME_BASE, 'uploads') : 'uploads';
+
+// Log the paths being used (helpful for debugging)
+console.log('Storage paths:', { DATA_DIR, UPLOADS_DIR, USE_VOLUME, VOLUME_BASE });
+
 app.use(express.static('.')); // Serve static files
 app.use('/admin', express.static('admin')); // Serve admin static files
-app.use('/uploads', express.static('uploads')); // Serve uploaded images
+app.use('/uploads', express.static(UPLOADS_DIR)); // Serve uploaded images
 
 // File upload configuration
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
-        const uploadPath = 'uploads';
         // Multer callbacks should handle async operations properly
-        fs.mkdir(uploadPath, { recursive: true })
-            .then(() => cb(null, uploadPath))
+        fs.mkdir(UPLOADS_DIR, { recursive: true })
+            .then(() => cb(null, UPLOADS_DIR))
             .catch((error) => {
                 console.error('Error creating upload directory:', error);
                 cb(error);
@@ -102,10 +114,7 @@ const upload = multer({
     }
 });
 
-// Data storage paths
-const DATA_DIR = process.env.RAILWAY_VOLUME_MOUNT_PATH 
-    ? path.join(process.env.RAILWAY_VOLUME_MOUNT_PATH, 'data')
-    : 'data';
+// File path constants using DATA_DIR and UPLOADS_DIR
 const CONFIG_FILE = path.join(DATA_DIR, 'config.json');
 const EVENTS_FILE = path.join(DATA_DIR, 'events.json');
 const ZONE_DATA_FILE = path.join(DATA_DIR, 'zone-data.json');
@@ -118,7 +127,7 @@ const VIEWERSHIP_FILE = path.join(DATA_DIR, 'stream-viewership.json');
 async function initializeData() {
     try {
         await fs.mkdir(DATA_DIR, { recursive: true });
-        await fs.mkdir('uploads', { recursive: true });
+        await fs.mkdir(UPLOADS_DIR, { recursive: true });
         
         // Initialize config file
         try {
@@ -866,15 +875,14 @@ app.post('/api/upload', requireAuth, (req, res, next) => {
 
 app.get('/api/upload', requireAuth, async (req, res) => {
     try {
-        const uploadsDir = 'uploads';
-        const files = await fs.readdir(uploadsDir);
+        const files = await fs.readdir(UPLOADS_DIR);
         const imageFiles = files.filter(file => {
             const ext = path.extname(file).toLowerCase();
             return ['.jpg', '.jpeg', '.png', '.gif', '.webp'].includes(ext);
         });
         
         const images = await Promise.all(imageFiles.map(async (filename) => {
-            const filePath = path.join(uploadsDir, filename);
+            const filePath = path.join(UPLOADS_DIR, filename);
             const stats = await fs.stat(filePath);
             return {
                 filename,
@@ -894,7 +902,7 @@ app.get('/api/upload', requireAuth, async (req, res) => {
 app.delete('/api/upload/:filename', requireAuth, async (req, res) => {
     try {
         const filename = req.params.filename;
-        const filePath = path.join('uploads', filename);
+        const filePath = path.join(UPLOADS_DIR, filename);
         
         // Check if file exists
         try {
