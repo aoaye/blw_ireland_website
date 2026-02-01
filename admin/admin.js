@@ -1558,7 +1558,25 @@ async function loadViewershipStats() {
             return;
         }
         
-        let html = '<div class="viewership-list">';
+        // Count total registered attendees across all streams
+        let totalRegistered = 0;
+        Object.keys(viewership).forEach(videoId => {
+            const stats = viewership[videoId];
+            const registeredCount = Object.values(stats.sessions || {})
+                .filter(s => s.firstName && s.lastName).length;
+            totalRegistered += registeredCount;
+        });
+        
+        let html = `
+            <div style="margin-bottom: 1.5rem; padding: 1rem; background: var(--light-bg); border-radius: 5px; display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <strong>Total Registered Attendees:</strong> ${totalRegistered} across ${Object.keys(viewership).length} stream(s)
+                </div>
+                <button onclick="exportAllViewership()" class="btn btn-primary" style="padding: 0.5rem 1rem; font-size: 0.9em;">
+                    📥 Export All Streams to CSV
+                </button>
+            </div>
+            <div class="viewership-list">`;
         
         // Show current stream first if active
         if (currentVideoId && viewership[currentVideoId]) {
@@ -1576,9 +1594,16 @@ async function loadViewershipStats() {
                     </div>
                     <p style="color: #666; font-size: 0.9em; margin: 0.25rem 0;">Video ID: ${currentVideoId}</p>
                     <p style="color: #666; font-size: 0.9em; margin: 0.25rem 0;">Started: ${new Date(stats.startTime).toLocaleString()}</p>
-                    <p style="color: var(--success); font-weight: 600; margin-top: 0.5rem;">
-                        ${registeredCount} registered viewers
-                    </p>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 0.5rem;">
+                        <p style="color: var(--success); font-weight: 600; margin: 0;">
+                            ${registeredCount} registered viewers
+                        </p>
+                        ${registeredCount > 0 ? `
+                            <button onclick="exportStreamViewership('${currentVideoId}')" class="btn btn-secondary btn-small" style="padding: 0.4rem 0.8rem; font-size: 0.85em;">
+                                📥 Export to CSV
+                            </button>
+                        ` : ''}
+                    </div>
                     <details style="margin-top: 0.5rem;">
                         <summary style="cursor: pointer; color: var(--secondary); font-weight: 600;">View Registered Attendees</summary>
                         <div style="margin-top: 0.5rem; padding: 0.5rem; background: white; border-radius: 4px; max-height: 300px; overflow-y: auto;">
@@ -1615,9 +1640,16 @@ async function loadViewershipStats() {
                         </span>
                     </div>
                     <p style="color: #666; font-size: 0.9em; margin: 0.25rem 0;">Started: ${new Date(stats.startTime).toLocaleString()}</p>
-                    <p style="color: var(--success); font-weight: 600; margin-top: 0.5rem;">
-                        ${registeredCount} registered viewers
-                    </p>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 0.5rem;">
+                        <p style="color: var(--success); font-weight: 600; margin: 0;">
+                            ${registeredCount} registered viewers
+                        </p>
+                        ${registeredCount > 0 ? `
+                            <button onclick="exportStreamViewership('${videoId}')" class="btn btn-secondary btn-small" style="padding: 0.4rem 0.8rem; font-size: 0.85em;">
+                                📥 Export to CSV
+                            </button>
+                        ` : ''}
+                    </div>
                     <details style="margin-top: 0.5rem;">
                         <summary style="cursor: pointer; color: var(--secondary); font-weight: 600;">View Details</summary>
                         <div style="margin-top: 0.5rem; padding: 0.5rem; background: white; border-radius: 4px;">
@@ -1650,6 +1682,68 @@ async function loadViewershipStats() {
         }
     }
 }
+
+// Export viewership for a specific stream
+window.exportStreamViewership = async function(videoId) {
+    try {
+        const response = await fetch(`${API_BASE}/stream/viewership/${videoId}/export`, {
+            credentials: 'include'
+        });
+        
+        if (!response.ok) {
+            if (response.status === 401) {
+                alert('Your session has expired. Please log in again.');
+                showLogin();
+                return;
+            }
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `stream-${videoId}-attendees-${Date.now()}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+    } catch (error) {
+        console.error('Error exporting stream viewership:', error);
+        alert('Failed to export viewership data. Please try again.');
+    }
+};
+
+// Export all viewership data
+window.exportAllViewership = async function() {
+    try {
+        const response = await fetch(`${API_BASE}/stream/viewership/export/all`, {
+            credentials: 'include'
+        });
+        
+        if (!response.ok) {
+            if (response.status === 401) {
+                alert('Your session has expired. Please log in again.');
+                showLogin();
+                return;
+            }
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `all-streams-attendees-${Date.now()}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+    } catch (error) {
+        console.error('Error exporting all viewership:', error);
+        alert('Failed to export viewership data. Please try again.');
+    }
+};
 
 // Initialize
 checkAuth();

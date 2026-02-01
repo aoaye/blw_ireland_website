@@ -592,6 +592,147 @@ app.get('/api/stream/viewership/:videoId?', async (req, res) => {
     }
 });
 
+// Helper function to escape CSV fields
+function escapeCSVField(field) {
+    if (field === null || field === undefined) {
+        return '';
+    }
+    const str = String(field);
+    // If field contains comma, quote, or newline, wrap in quotes and escape quotes
+    if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+        return `"${str.replace(/"/g, '""')}"`;
+    }
+    return str;
+}
+
+// Helper function to convert viewership data to CSV
+function convertViewershipToCSV(streamData, videoId, includeStreamColumn = false) {
+    const sessions = streamData.sessions || {};
+    const registeredSessions = Object.values(sessions).filter(s => s.firstName && s.lastName);
+    
+    if (registeredSessions.length === 0) {
+        return 'No registered attendees for this stream.';
+    }
+    
+    // CSV Headers
+    const headers = [];
+    if (includeStreamColumn) {
+        headers.push('Stream Video ID');
+    }
+    headers.push('First Name', 'Last Name', 'Email', 'Phone', 'Join Date', 'Join Time', 'View Count');
+    
+    // Build CSV rows
+    const rows = registeredSessions.map(session => {
+        const joinDate = new Date(session.firstViewTime);
+        const dateStr = joinDate.toLocaleDateString();
+        const timeStr = joinDate.toLocaleTimeString();
+        
+        const row = [];
+        if (includeStreamColumn) {
+            row.push(escapeCSVField(videoId));
+        }
+        row.push(
+            escapeCSVField(session.firstName),
+            escapeCSVField(session.lastName),
+            escapeCSVField(session.viewerEmail || ''),
+            escapeCSVField(session.viewerPhone || ''),
+            escapeCSVField(dateStr),
+            escapeCSVField(timeStr),
+            escapeCSVField(session.viewCount || 1)
+        );
+        return row.join(',');
+    });
+    
+    return [headers.join(','), ...rows].join('\n');
+}
+
+// Export viewership data for a specific stream as CSV
+app.get('/api/stream/viewership/:videoId/export', requireAuth, async (req, res) => {
+    try {
+        let viewership = {};
+        
+        try {
+            viewership = await readJSON(VIEWERSHIP_FILE);
+        } catch {
+            viewership = {};
+        }
+        
+        const videoId = req.params.videoId;
+        const streamData = viewership[videoId];
+        
+        if (!streamData) {
+            return res.status(404).json({ error: 'Stream not found' });
+        }
+        
+        const csv = convertViewershipToCSV(streamData, videoId, false);
+        
+        // Set headers for CSV download
+        res.setHeader('Content-Type', 'text/csv');
+        res.setHeader('Content-Disposition', `attachment; filename="stream-${videoId}-attendees-${Date.now()}.csv"`);
+        res.send(csv);
+    } catch (error) {
+        console.error('Error exporting viewership CSV:', error);
+        res.status(500).json({ error: 'Failed to export viewership data' });
+    }
+});
+
+// Export all viewership data as CSV
+app.get('/api/stream/viewership/export/all', requireAuth, async (req, res) => {
+    try {
+        let viewership = {};
+        
+        try {
+            viewership = await readJSON(VIEWERSHIP_FILE);
+        } catch {
+            viewership = {};
+        }
+        
+        if (Object.keys(viewership).length === 0) {
+            return res.status(404).json({ error: 'No viewership data available' });
+        }
+        
+        // Build CSV with all streams
+        const allRows = [];
+        const headers = ['Stream Video ID', 'First Name', 'Last Name', 'Email', 'Phone', 'Join Date', 'Join Time', 'View Count'];
+        allRows.push(headers.join(','));
+        
+        // Add data from each stream
+        Object.keys(viewership).forEach(videoId => {
+            const streamData = viewership[videoId];
+            const sessions = streamData.sessions || {};
+            const registeredSessions = Object.values(sessions).filter(s => s.firstName && s.lastName);
+            
+            registeredSessions.forEach(session => {
+                const joinDate = new Date(session.firstViewTime);
+                const dateStr = joinDate.toLocaleDateString();
+                const timeStr = joinDate.toLocaleTimeString();
+                
+                const row = [
+                    escapeCSVField(videoId),
+                    escapeCSVField(session.firstName),
+                    escapeCSVField(session.lastName),
+                    escapeCSVField(session.viewerEmail || ''),
+                    escapeCSVField(session.viewerPhone || ''),
+                    escapeCSVField(dateStr),
+                    escapeCSVField(timeStr),
+                    escapeCSVField(session.viewCount || 1)
+                ];
+                allRows.push(row.join(','));
+            });
+        });
+        
+        const csv = allRows.join('\n');
+        
+        // Set headers for CSV download
+        res.setHeader('Content-Type', 'text/csv');
+        res.setHeader('Content-Disposition', `attachment; filename="all-streams-attendees-${Date.now()}.csv"`);
+        res.send(csv);
+    } catch (error) {
+        console.error('Error exporting all viewership CSV:', error);
+        res.status(500).json({ error: 'Failed to export viewership data' });
+    }
+});
+
 // ==================== INSTAGRAM CONFIG ROUTES ====================
 
 app.get('/api/instagram-config', async (req, res) => {
