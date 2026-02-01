@@ -110,6 +110,7 @@ const ZONE_DATA_FILE = path.join(DATA_DIR, 'zone-data.json');
 const STREAM_CONFIG_FILE = path.join(DATA_DIR, 'stream-config.json');
 const INSTAGRAM_CONFIG_FILE = path.join(DATA_DIR, 'instagram-config.json');
 const PREVIOUS_STREAMS_FILE = path.join(DATA_DIR, 'previous-streams.json');
+const VIEWERSHIP_FILE = path.join(DATA_DIR, 'stream-viewership.json');
 
 // Initialize data directory and default config
 async function initializeData() {
@@ -193,6 +194,13 @@ async function initializeData() {
             await fs.writeFile(PREVIOUS_STREAMS_FILE, JSON.stringify({
                 videos: []
             }, null, 2));
+        }
+        
+        // Initialize viewership tracking
+        try {
+            await fs.access(VIEWERSHIP_FILE);
+        } catch {
+            await fs.writeFile(VIEWERSHIP_FILE, JSON.stringify({}, null, 2));
         }
     } catch (error) {
         console.error('Error initializing data:', error);
@@ -451,6 +459,136 @@ app.put('/api/stream-config', requireAuth, async (req, res) => {
     } catch (error) {
         console.error('Error saving stream config:', error);
         res.status(500).json({ error: 'Failed to save stream configuration' });
+    }
+});
+
+// ==================== STREAM VIEWERSHIP ROUTES ====================
+
+// Track a stream view
+app.post('/api/stream/view', async (req, res) => {
+    try {
+        const { videoId, sessionId, firstName, lastName, viewerEmail, viewerPhone, timestamp } = req.body;
+        
+        if (!videoId || !sessionId) {
+            return res.status(400).json({ error: 'videoId and sessionId are required' });
+        }
+        
+        // Load existing viewership data
+        let viewership = {};
+        
+        try {
+            viewership = await readJSON(VIEWERSHIP_FILE);
+        } catch {
+            viewership = {};
+        }
+        
+        // Initialize stream entry if it doesn't exist
+        if (!viewership[videoId]) {
+            viewership[videoId] = {
+                videoId,
+                startTime: timestamp,
+                sessions: {},
+                uniqueSessions: [],
+                totalViews: 0
+            };
+        }
+        
+        // Check if this session already viewed (to avoid duplicate counts on reload)
+        const streamData = viewership[videoId];
+        
+        if (!streamData.sessions[sessionId]) {
+            // New session - add to unique count
+            if (!streamData.uniqueSessions.includes(sessionId)) {
+                streamData.uniqueSessions.push(sessionId);
+            }
+            streamData.totalViews++;
+            
+            // Store session details
+            streamData.sessions[sessionId] = {
+                sessionId,
+                firstName: firstName || null,
+                lastName: lastName || null,
+                viewerName: firstName && lastName ? `${firstName} ${lastName}` : null,
+                viewerEmail: viewerEmail || null,
+                viewerPhone: viewerPhone || null,
+                firstViewTime: timestamp,
+                lastViewTime: timestamp,
+                viewCount: 1
+            };
+        } else {
+            // Existing session - just update last view time
+            streamData.sessions[sessionId].lastViewTime = timestamp;
+            streamData.sessions[sessionId].viewCount++;
+            
+            // Update name if provided (in case user registered after first view)
+            if (firstName && lastName) {
+                streamData.sessions[sessionId].firstName = firstName;
+                streamData.sessions[sessionId].lastName = lastName;
+                streamData.sessions[sessionId].viewerName = `${firstName} ${lastName}`;
+            }
+            if (viewerEmail) {
+                streamData.sessions[sessionId].viewerEmail = viewerEmail;
+            }
+            if (viewerPhone) {
+                streamData.sessions[sessionId].viewerPhone = viewerPhone;
+            }
+        }
+        
+        await writeJSON(VIEWERSHIP_FILE, viewership);
+        
+        res.json({ 
+            success: true, 
+            uniqueViewers: streamData.uniqueSessions.length,
+            isNewViewer: streamData.sessions[sessionId].viewCount === 1
+        });
+    } catch (error) {
+        console.error('Error tracking view:', error);
+        res.status(500).json({ error: 'Failed to track view' });
+    }
+});
+
+// Get viewership stats
+app.get('/api/stream/viewership/:videoId?', async (req, res) => {
+    try {
+        let viewership = {};
+        
+        try {
+            viewership = await readJSON(VIEWERSHIP_FILE);
+        } catch {
+            viewership = {};
+        }
+        
+        const videoId = req.params.videoId;
+        if (videoId) {
+            const streamData = viewership[videoId];
+            if (streamData) {
+                res.json({
+                    ...streamData,
+                    uniqueViewerCount: streamData.uniqueSessions.length
+                });
+            } else {
+                res.json({ 
+                    videoId, 
+                    uniqueViewerCount: 0, 
+                    sessions: {},
+                    uniqueSessions: [],
+                    totalViews: 0
+                });
+            }
+        } else {
+            // Return all viewership data with counts
+            const dataWithCounts = {};
+            Object.keys(viewership).forEach(key => {
+                dataWithCounts[key] = {
+                    ...viewership[key],
+                    uniqueViewerCount: viewership[key].uniqueSessions.length
+                };
+            });
+            res.json(dataWithCounts);
+        }
+    } catch (error) {
+        console.error('Error loading viewership:', error);
+        res.status(500).json({ error: 'Failed to load viewership data' });
     }
 });
 

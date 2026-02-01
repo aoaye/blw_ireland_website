@@ -1614,3 +1614,56 @@ footer {
     }
 }
 
+/* Registration Modal Styles */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes fadeOut {
+    from {
+        opacity: 1;
+    }
+    to {
+        opacity: 0;
+    }
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateY(-20px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.registration-modal {
+    animation: fadeIn 0.3s ease;
+}
+
+.registration-modal-content {
+    animation: slideIn 0.3s ease;
+}
+
+.registration-modal-content input:focus {
+    outline: none;
+    border-color: var(--secondary-color, #3498db);
+    box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+}
+
+.registration-modal-content button:hover {
+    opacity: 0.9;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.registration-modal-content button:active {
+    transform: translateY(0);
+}

@@ -1,6 +1,326 @@
 // Simple YouTube Live Stream Embed
 // Loads and displays a YouTube stream configured in the admin portal
 
+// ==================== SESSION MANAGEMENT ====================
+
+const SESSION_DURATION = 6 * 60 * 60 * 1000; // 6 hours in milliseconds
+const SESSION_KEY = 'blw_stream_session';
+const REGISTRATION_KEY = 'blw_registration_shown';
+
+// Get or create session
+function getSession() {
+    let session = localStorage.getItem(SESSION_KEY);
+    
+    if (session) {
+        try {
+            session = JSON.parse(session);
+            // Check if session expired
+            const now = Date.now();
+            if (now - session.createdAt > SESSION_DURATION) {
+                // Session expired, create new one
+                session = createNewSession();
+            } else {
+                // Update last activity
+                session.lastActivity = now;
+                localStorage.setItem(SESSION_KEY, JSON.stringify(session));
+            }
+        } catch {
+            session = createNewSession();
+        }
+    } else {
+        session = createNewSession();
+    }
+    
+    return session;
+}
+
+// Create new session
+function createNewSession() {
+    const session = {
+        sessionId: 'session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+        createdAt: Date.now(),
+        lastActivity: Date.now(),
+        firstName: null,
+        lastName: null,
+        viewerEmail: null,
+        viewerPhone: null
+    };
+    localStorage.setItem(SESSION_KEY, JSON.stringify(session));
+    return session;
+}
+
+// ==================== REGISTRATION POPUP ====================
+
+// Show registration popup
+function showRegistrationPopup(session, videoId) {
+    // Only show if there's a valid video ID (stream is configured)
+    if (!videoId) {
+        return; // No stream configured, don't show registration
+    }
+    
+    // Check if we've shown popup recently (within last hour)
+    const lastShown = localStorage.getItem(REGISTRATION_KEY);
+    if (lastShown) {
+        const timeSinceShown = Date.now() - parseInt(lastShown);
+        if (timeSinceShown < 60 * 60 * 1000) { // 1 hour
+            return; // Don't show again too soon
+        }
+    }
+    
+    // Check if user already registered in this session
+    if (session.firstName && session.lastName) {
+        return; // Already registered
+    }
+    
+    // Create modal
+    const modal = document.createElement('div');
+    modal.className = 'registration-modal';
+    modal.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.7);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 10000;
+        animation: fadeIn 0.3s ease;
+    `;
+    
+    modal.innerHTML = `
+        <div class="registration-modal-content" style="
+            background: white;
+            padding: 2rem;
+            border-radius: 10px;
+            max-width: 500px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+        ">
+            <h2 style="margin-top: 0; color: var(--primary-color, #2c3e50);">Welcome to Live Stream</h2>
+            <p style="color: #666; margin-bottom: 1.5rem;">
+                Please provide your information to help us track attendance.
+            </p>
+            
+            <form id="registration-form">
+                <div style="margin-bottom: 1rem;">
+                    <label for="viewer-first-name" style="display: block; margin-bottom: 0.5rem; font-weight: 600;">
+                        First Name <span style="color: #e74c3c;">*</span>
+                    </label>
+                    <input 
+                        type="text" 
+                        id="viewer-first-name" 
+                        placeholder="Your first name"
+                        required
+                        style="width: 100%; padding: 0.75rem; border: 2px solid #ddd; border-radius: 5px; font-size: 1rem; box-sizing: border-box;"
+                    >
+                </div>
+                
+                <div style="margin-bottom: 1rem;">
+                    <label for="viewer-last-name" style="display: block; margin-bottom: 0.5rem; font-weight: 600;">
+                        Last Name <span style="color: #e74c3c;">*</span>
+                    </label>
+                    <input 
+                        type="text" 
+                        id="viewer-last-name" 
+                        placeholder="Your last name"
+                        required
+                        style="width: 100%; padding: 0.75rem; border: 2px solid #ddd; border-radius: 5px; font-size: 1rem; box-sizing: border-box;"
+                    >
+                </div>
+                
+                <div style="margin-bottom: 1rem;">
+                    <label for="viewer-email" style="display: block; margin-bottom: 0.5rem; font-weight: 600;">
+                        Email <span style="color: #999; font-weight: normal;">(optional)</span>
+                    </label>
+                    <input 
+                        type="email" 
+                        id="viewer-email" 
+                        placeholder="your.email@example.com"
+                        style="width: 100%; padding: 0.75rem; border: 2px solid #ddd; border-radius: 5px; font-size: 1rem; box-sizing: border-box;"
+                    >
+                </div>
+                
+                <div style="margin-bottom: 1.5rem;">
+                    <label for="viewer-phone" style="display: block; margin-bottom: 0.5rem; font-weight: 600;">
+                        Phone <span style="color: #999; font-weight: normal;">(optional)</span>
+                    </label>
+                    <input 
+                        type="tel" 
+                        id="viewer-phone" 
+                        placeholder="+353 XX XXX XXXX"
+                        style="width: 100%; padding: 0.75rem; border: 2px solid #ddd; border-radius: 5px; font-size: 1rem; box-sizing: border-box;"
+                    >
+                </div>
+                
+                <div style="margin-bottom: 1rem; padding: 0.75rem; background: #f8f9fa; border-radius: 5px; font-size: 0.85rem; color: #666;">
+                    <strong>Privacy:</strong> Your information is only used for attendance tracking and will not be shared with third parties.
+                </div>
+                
+                <button 
+                    type="submit" 
+                    style="
+                        width: 100%;
+                        padding: 0.75rem;
+                        background: var(--primary-color, #2c3e50);
+                        color: white;
+                        border: none;
+                        border-radius: 5px;
+                        font-size: 1rem;
+                        font-weight: 600;
+                        cursor: pointer;
+                    "
+                >
+                    Continue Watching
+                </button>
+            </form>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    // Handle form submission
+    document.getElementById('registration-form').addEventListener('submit', (e) => {
+        e.preventDefault();
+        saveRegistration(modal, session);
+    });
+    
+    // Close on outside click (disabled - user must register)
+    // modal.addEventListener('click', (e) => {
+    //     if (e.target === modal) {
+    //         // Don't allow closing without registration
+    //     }
+    // });
+    
+    // Mark as shown
+    localStorage.setItem(REGISTRATION_KEY, Date.now().toString());
+}
+
+// Save registration
+function saveRegistration(modal, session) {
+    const firstName = document.getElementById('viewer-first-name').value.trim();
+    const lastName = document.getElementById('viewer-last-name').value.trim();
+    const email = document.getElementById('viewer-email').value.trim();
+    const phone = document.getElementById('viewer-phone').value.trim();
+    
+    // Validate required fields
+    if (!firstName || !lastName) {
+        alert('Please provide both first and last name.');
+        return;
+    }
+    
+    // Update session
+    session.firstName = firstName;
+    session.lastName = lastName;
+    session.viewerEmail = email || null;
+    session.viewerPhone = phone || null;
+    localStorage.setItem(SESSION_KEY, JSON.stringify(session));
+    
+    // Close modal
+    closeRegistrationModal(modal);
+    
+    // Track view with registration info
+    const videoId = extractYouTubeVideoIdFromPage();
+    if (videoId) {
+        trackStreamView(videoId, session);
+        // Update viewer count after registration
+        updateViewerCount(videoId);
+    }
+}
+
+// Close registration modal
+function closeRegistrationModal(modal) {
+    modal.style.animation = 'fadeOut 0.3s ease';
+    setTimeout(() => {
+        if (modal.parentNode) {
+            modal.parentNode.removeChild(modal);
+        }
+    }, 300);
+}
+
+// ==================== VIEWERSHIP TRACKING ====================
+
+// Track stream view
+async function trackStreamView(videoId, session) {
+    if (!videoId || !session) return;
+    
+    const timestamp = Date.now();
+    
+    try {
+        const apiUrl = window.location.origin.includes('localhost')
+            ? 'http://localhost:8080/api/stream/view'
+            : `${window.location.origin}/api/stream/view`;
+        
+        const response = await fetch(apiUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                videoId,
+                sessionId: session.sessionId,
+                firstName: session.firstName,
+                lastName: session.lastName,
+                viewerEmail: session.viewerEmail,
+                viewerPhone: session.viewerPhone,
+                timestamp
+            })
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            console.log('View tracked:', data);
+            updateViewerCount(videoId);
+        }
+    } catch (error) {
+        console.error('Error tracking view:', error);
+    }
+}
+
+// Update viewer count display
+async function updateViewerCount(videoId) {
+    try {
+        const apiUrl = window.location.origin.includes('localhost')
+            ? `http://localhost:8080/api/stream/viewership/${videoId}`
+            : `${window.location.origin}/api/stream/viewership/${videoId}`;
+        
+        const response = await fetch(apiUrl);
+        if (response.ok) {
+            const data = await response.json();
+            const count = data.uniqueViewerCount || 0;
+            
+            // Display viewer count on page
+            let viewerCountEl = document.getElementById('viewer-count');
+            if (!viewerCountEl) {
+                viewerCountEl = document.createElement('div');
+                viewerCountEl.id = 'viewer-count';
+                viewerCountEl.style.cssText = 'position: absolute; top: 10px; right: 10px; background: rgba(0,0,0,0.7); color: white; padding: 0.5rem 1rem; border-radius: 5px; font-weight: 600; z-index: 10;';
+                const videoWrapper = document.querySelector('.video-wrapper');
+                if (videoWrapper) {
+                    videoWrapper.style.position = 'relative';
+                    videoWrapper.appendChild(viewerCountEl);
+                }
+            }
+            viewerCountEl.textContent = `👁️ ${count} ${count === 1 ? 'viewer' : 'viewers'}`;
+        }
+    } catch (error) {
+        console.error('Error loading viewer count:', error);
+    }
+}
+
+// Helper to extract video ID from current page
+function extractYouTubeVideoIdFromPage() {
+    const iframe = document.querySelector('.video-wrapper iframe');
+    if (iframe && iframe.src) {
+        const match = iframe.src.match(/embed\/([a-zA-Z0-9_-]+)/);
+        return match ? match[1] : null;
+    }
+    return null;
+}
+
+// ==================== STREAM LOADING ====================
+
 // Load stream configuration from API
 async function loadStream() {
     const videoWrapper = document.querySelector('.video-wrapper');
@@ -76,6 +396,17 @@ function embedYouTubeStream(streamUrl, container, placeholder) {
     
     console.log('Embedding YouTube stream:', videoId);
     
+    // Get or create session
+    const session = getSession();
+    
+    // Show registration popup if stream is configured and active (after a short delay)
+    setTimeout(() => {
+        showRegistrationPopup(session, videoId);
+    }, 1000); // Show after 1 second
+    
+    // Track the view (only if user is registered or will register)
+    // We'll track after registration is complete
+    
     // Hide placeholder
     placeholder.style.display = 'none';
     
@@ -95,6 +426,24 @@ function embedYouTubeStream(streamUrl, container, placeholder) {
     
     // Also embed YouTube live chat
     embedYouTubeChat(videoId);
+    
+    // If user is already registered, track the view immediately
+    if (session.firstName && session.lastName) {
+        trackStreamView(videoId, session);
+    }
+    
+    // Update viewer count periodically
+    setInterval(() => {
+        const currentSession = getSession();
+        // Only update if user is registered
+        if (currentSession.firstName && currentSession.lastName) {
+            updateViewerCount(videoId);
+            // Re-track if session is still valid (to update last activity)
+            if (currentSession.sessionId === session.sessionId) {
+                trackStreamView(videoId, currentSession);
+            }
+        }
+    }, 30000); // Every 30 seconds
 }
 
 // Embed YouTube live chat

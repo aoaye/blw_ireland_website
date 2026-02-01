@@ -88,6 +88,10 @@ function showSection(section) {
         loadImages();
         loadHeroBackgroundPreview();
     }
+    if (section === 'livestream') {
+        loadStreamConfig();
+        loadViewershipStats();
+    }
 }
 
 // Load dashboard data
@@ -1537,6 +1541,116 @@ async function loadConfig() {
     }
 }
 
+// Load viewership statistics
+async function loadViewershipStats() {
+    try {
+        const response = await fetch(`${API_BASE}/stream/viewership`);
+        const viewership = await response.json();
+        
+        const container = document.getElementById('viewership-stats');
+        if (!container) return;
+        
+        const streamConfig = await fetch(`${API_BASE}/stream-config`).then(r => r.json());
+        const currentVideoId = extractVideoId(streamConfig.embeddedStreamUrl || '');
+        
+        if (Object.keys(viewership).length === 0) {
+            container.innerHTML = '<p style="color: #666;">No viewership data available yet. Viewership will be tracked when users watch the stream.</p>';
+            return;
+        }
+        
+        let html = '<div class="viewership-list">';
+        
+        // Show current stream first if active
+        if (currentVideoId && viewership[currentVideoId]) {
+            const stats = viewership[currentVideoId];
+            const registeredCount = Object.values(stats.sessions || {})
+                .filter(s => s.firstName && s.lastName).length;
+            
+            html += `
+                <div class="viewership-item" style="border-left: 4px solid var(--success); padding: 1rem; margin-bottom: 1rem; background: var(--light-bg); border-radius: 5px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                        <h4 style="margin: 0; color: var(--primary);">Current Stream</h4>
+                        <span style="background: var(--success); color: white; padding: 0.4rem 0.8rem; border-radius: 20px; font-size: 0.85rem; font-weight: 600;">
+                            ${stats.uniqueViewerCount || 0} unique viewers
+                        </span>
+                    </div>
+                    <p style="color: #666; font-size: 0.9em; margin: 0.25rem 0;">Video ID: ${currentVideoId}</p>
+                    <p style="color: #666; font-size: 0.9em; margin: 0.25rem 0;">Started: ${new Date(stats.startTime).toLocaleString()}</p>
+                    <p style="color: var(--success); font-weight: 600; margin-top: 0.5rem;">
+                        ${registeredCount} registered viewers
+                    </p>
+                    <details style="margin-top: 0.5rem;">
+                        <summary style="cursor: pointer; color: var(--secondary); font-weight: 600;">View Registered Attendees</summary>
+                        <div style="margin-top: 0.5rem; padding: 0.5rem; background: white; border-radius: 4px; max-height: 300px; overflow-y: auto;">
+                            ${Object.values(stats.sessions || {})
+                                .filter(s => s.firstName && s.lastName)
+                                .map(s => `
+                                    <div style="padding: 0.75rem; border-bottom: 1px solid #ddd;">
+                                        <strong>${s.firstName} ${s.lastName}</strong>
+                                        ${s.viewerEmail ? `<br><small style="color: #666;">📧 ${s.viewerEmail}</small>` : ''}
+                                        ${s.viewerPhone ? `<br><small style="color: #666;">📞 ${s.viewerPhone}</small>` : ''}
+                                        <br><small style="color: #999;">Joined: ${new Date(s.firstViewTime).toLocaleString()}</small>
+                                    </div>
+                                `).join('') || '<p style="color: #999; padding: 0.5rem;">No registered attendees yet.</p>'}
+                        </div>
+                    </details>
+                </div>
+            `;
+        }
+        
+        // Show all other streams
+        Object.keys(viewership).forEach(videoId => {
+            if (videoId === currentVideoId) return; // Already shown
+            
+            const stats = viewership[videoId];
+            const registeredCount = Object.values(stats.sessions || {})
+                .filter(s => s.firstName && s.lastName).length;
+            
+            html += `
+                <div class="viewership-item" style="padding: 1rem; margin-bottom: 1rem; background: var(--light-bg); border-radius: 5px; border-left: 4px solid var(--secondary);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                        <h4 style="margin: 0; color: var(--primary);">Stream: ${videoId.substring(0, 11)}...</h4>
+                        <span style="background: var(--secondary); color: white; padding: 0.4rem 0.8rem; border-radius: 20px; font-size: 0.85rem; font-weight: 600;">
+                            ${stats.uniqueViewerCount || 0} unique viewers
+                        </span>
+                    </div>
+                    <p style="color: #666; font-size: 0.9em; margin: 0.25rem 0;">Started: ${new Date(stats.startTime).toLocaleString()}</p>
+                    <p style="color: var(--success); font-weight: 600; margin-top: 0.5rem;">
+                        ${registeredCount} registered viewers
+                    </p>
+                    <details style="margin-top: 0.5rem;">
+                        <summary style="cursor: pointer; color: var(--secondary); font-weight: 600;">View Details</summary>
+                        <div style="margin-top: 0.5rem; padding: 0.5rem; background: white; border-radius: 4px;">
+                            <p style="margin: 0.25rem 0;"><strong>Total Views:</strong> ${stats.totalViews || 0}</p>
+                            <p style="margin: 0.25rem 0;"><strong>Unique Viewers:</strong> ${stats.uniqueViewerCount || 0}</p>
+                            <div style="margin-top: 0.5rem; max-height: 200px; overflow-y: auto;">
+                                ${Object.values(stats.sessions || {})
+                                    .filter(s => s.firstName && s.lastName)
+                                    .map(s => `
+                                        <div style="padding: 0.5rem; border-bottom: 1px solid #eee;">
+                                            <strong>${s.firstName} ${s.lastName}</strong>
+                                            ${s.viewerEmail ? `<br><small style="color: #666;">📧 ${s.viewerEmail}</small>` : ''}
+                                            ${s.viewerPhone ? `<br><small style="color: #666;">📞 ${s.viewerPhone}</small>` : ''}
+                                        </div>
+                                    `).join('') || '<p style="color: #999;">No registered attendees.</p>'}
+                            </div>
+                        </div>
+                    </details>
+                </div>
+            `;
+        });
+        
+        html += '</div>';
+        container.innerHTML = html;
+    } catch (error) {
+        console.error('Error loading viewership stats:', error);
+        const container = document.getElementById('viewership-stats');
+        if (container) {
+            container.innerHTML = '<p style="color: var(--danger);">Error loading viewership data.</p>';
+        }
+    }
+}
+
 // Initialize
 checkAuth();
 
@@ -1544,7 +1658,10 @@ checkAuth();
 document.querySelectorAll('.nav-link').forEach(link => {
     link.addEventListener('click', () => {
         const section = link.dataset.section;
-        if (section === 'livestream') loadStreamConfig();
+        if (section === 'livestream') {
+            loadStreamConfig();
+            loadViewershipStats();
+        }
         if (section === 'instagram') loadInstagramConfig();
         if (section === 'settings') loadConfig();
     });
