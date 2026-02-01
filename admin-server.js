@@ -103,7 +103,9 @@ const upload = multer({
 });
 
 // Data storage paths
-const DATA_DIR = 'data';
+const DATA_DIR = process.env.RAILWAY_VOLUME_MOUNT_PATH 
+    ? path.join(process.env.RAILWAY_VOLUME_MOUNT_PATH, 'data')
+    : 'data';
 const CONFIG_FILE = path.join(DATA_DIR, 'config.json');
 const EVENTS_FILE = path.join(DATA_DIR, 'events.json');
 const ZONE_DATA_FILE = path.join(DATA_DIR, 'zone-data.json');
