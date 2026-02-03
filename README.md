@@ -5,30 +5,13 @@ A modern, responsive website for BLW Ireland Zone with live streaming capabiliti
 ## Features
 
 - 🏠 **Homepage** - Welcome page with features and upcoming events
-- 📺 **Live Stream** - RTMP/HLS/FLV streaming support
+- 📺 **Live Stream** - YouTube embedded streaming with viewer registration
 - ℹ️ **About Page** - Information about the organization
+- 🎛️ **Admin Portal** - Full content management system
 
-## Quick Start - Local Testing
+## Quick Start - Local Development
 
-### Option 1: Python HTTP Server (Easiest)
-
-**Windows:**
-```bash
-# Run in command prompt:
-python -m http.server 8000
-```
-
-**Mac/Linux:**
-```bash
-# Run directly:
-python3 -m http.server 8000
-```
-
-Then open: **http://localhost:8000**
-
-**Note**: For full functionality (admin portal, API), use Option 2 instead.
-
-### Option 2: Admin Server (Recommended)
+### Install and Run
 
 ```bash
 # Install dependencies first:
@@ -39,52 +22,13 @@ npm start
 # Or: node admin-server.js
 ```
 
-The website will be available at: **http://localhost:8080**
-The admin portal will be at: **http://localhost:8080/admin**
+The website will be available at: **http://localhost:8080**  
+The admin portal will be at: **http://localhost:8080/admin**  
+Default admin password: `admin` (change this immediately!)
 
 **For Live Streaming:**
 - Configure YouTube Live streaming in the Admin Portal
 - See [EMBEDDED_STREAMING_GUIDE.md](EMBEDDED_STREAMING_GUIDE.md) for detailed setup instructions
-
-### Option 3: VS Code Live Server
-
-1. Install the "Live Server" extension in VS Code
-2. Right-click on `index.html`
-3. Select "Open with Live Server"
-
-### Option 4: PHP Built-in Server
-
-```bash
-php -S localhost:8000
-```
-
-## Deploying to a Test Server
-
-### Option 1: GitHub Pages (Free)
-
-1. Create a GitHub repository
-2. Upload all files
-3. Go to Settings > Pages
-4. Select main branch
-5. Your site will be at: `https://yourusername.github.io/repository-name`
-
-### Option 2: Netlify (Free)
-
-1. Go to [netlify.com](https://netlify.com)
-2. Drag and drop your project folder
-3. Your site will be live instantly!
-
-### Option 3: Vercel (Free)
-
-1. Install Vercel CLI: `npm i -g vercel`
-2. Run `vercel` in your project folder
-3. Follow the prompts
-
-### Option 4: Traditional Web Hosting
-
-1. Upload all files via FTP to your web hosting
-2. Ensure `index.html` is in the root directory
-3. Access via your domain name
 
 ## File Structure
 
@@ -102,11 +46,23 @@ blw_ireland_website/
 └── README.md           # This file
 ```
 
-## Streaming Setup
+## Documentation
 
-This project supports embedded streaming from YouTube, Facebook, or Vimeo. **No server setup needed!**
-- See [EMBEDDED_STREAMING_GUIDE.md](EMBEDDED_STREAMING_GUIDE.md) for setup instructions
-- **Best for**: Most users - free, reliable, automatic recording
+- **[SETUP_INSTRUCTIONS.md](SETUP_INSTRUCTIONS.md)** - Complete setup guide
+- **[ADMIN_PORTAL.md](ADMIN_PORTAL.md)** - Admin portal feature guide
+- **[DEPLOYMENT.md](DEPLOYMENT.md)** - Production deployment guide
+- **[EMBEDDED_STREAMING_GUIDE.md](EMBEDDED_STREAMING_GUIDE.md)** - YouTube streaming setup
+- **[RAILWAY_VOLUME_SETUP.md](RAILWAY_VOLUME_SETUP.md)** - Persistent storage setup for Railway
+
+## Features Overview
+
+- **Content Management** - Admin portal for managing events, images, and content
+- **Live Streaming** - YouTube embedded streaming with viewer registration and attendance tracking
+- **Event Calendar** - Add and manage upcoming events (automatically archives past events)
+- **Instagram Feed** - Display Instagram posts on homepage
+- **Zone Structure** - Manage groups and colleges with images
+- **Hero Slideshow** - Multiple background images that cycle automatically
+- **Viewership Tracking** - Track unique viewers and export attendance data to CSV
 
 ## Browser Support
 
@@ -119,23 +75,26 @@ This project supports embedded streaming from YouTube, Facebook, or Vimeo. **No 
 ## Notes
 
 - The website is fully responsive and works on mobile devices
-- All pages are static HTML/CSS/JavaScript
-- No backend server required for basic functionality
-- Live stream requires RTMP server configuration
+- Requires Node.js backend for full functionality (admin portal, API, file uploads)
+- Data is stored in JSON files (supports Railway persistent volumes)
+- All content is managed through the admin portal
 
 ## Troubleshooting
 
 **Server won't start?**
-- Make sure Python or Node.js is installed
-- Check if port 8000 is already in use
-- Try a different port: `python -m http.server 8080`
+- Make sure Node.js is installed: `node --version`
+- Check if port 8080 is already in use
+- Ensure dependencies are installed: `npm install`
 
-**Pages not loading?**
-- Make sure all files are in the same directory
+**Can't login to admin?**
+- Default password is `admin`
 - Check browser console for errors (F12)
-- Ensure file names match exactly (case-sensitive on Linux/Mac)
+- Verify admin-server.js is running
 
-## Support
+**Images not uploading?**
+- Check that `uploads/` directory exists and is writable
+- Verify file size is under 10MB
+- Check server logs for errors
 
-For issues or questions, check the RTMP setup guide or consult your web administrator.
+For more help, see [SETUP_INSTRUCTIONS.md](SETUP_INSTRUCTIONS.md) or [DEPLOYMENT.md](DEPLOYMENT.md).
 

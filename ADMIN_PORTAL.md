@@ -4,11 +4,12 @@
 
 The BLW Ireland Zone Admin Portal provides comprehensive control over your website content, including:
 
-- **Live Stream Management** - Configure RTMP/HLS/FLV streams
-- **Instagram Feed** - Manual or automatic post fetching
-- **Events Calendar** - Add, edit, and delete events
+- **Live Stream Management** - Configure YouTube embedded streaming with viewer registration
+- **Instagram Feed** - Manual post URL configuration
+- **Events Calendar** - Add, edit, and delete events (auto-archives past events)
 - **Zone Structure** - Manage groups and colleges with GUI
-- **Image Management** - Upload images for backgrounds and groups
+- **Image Management** - Upload images for hero slideshow and groups
+- **Viewership Tracking** - View and export livestream attendance data
 - **Site Settings** - Configure site title, tagline, and admin password
 
 ## Installation
@@ -34,16 +35,15 @@ The BLW Ireland Zone Admin Portal provides comprehensive control over your websi
 ## Features
 
 ### 1. Live Stream Management
-- Configure RTMP/HLS/FLV stream URLs
-- Set stream type (RTMP, HLS, or FLV)
-- Toggle live status
+- Configure YouTube embedded streaming (URL or video ID)
+- Add previous livestream videos for archive
+- View viewership statistics and export attendance data to CSV
 - Changes reflect immediately on the livestream page
 
 ### 2. Instagram Feed
-- **Auto-fetch mode**: Automatically fetches latest post using Instagram API
-- **Manual mode**: Set a specific post URL
-- Configure Instagram Access Token and User ID for API access
-- See `INSTAGRAM_API_SETUP.md` for API setup instructions
+- **Manual mode**: Set a specific Instagram post URL
+- Post displays on the homepage
+- To get a post URL: Go to Instagram post → Click three dots (⋯) → Copy Link
 
 ### 3. Events Calendar
 - Add new events with title, description, date, time, and day
@@ -59,10 +59,11 @@ The BLW Ireland Zone Admin Portal provides comprehensive control over your websi
 
 ### 5. Image Management
 - Upload images for:
-  - Hero background (homepage banner)
+  - Hero background slideshow (multiple images supported)
   - Group images (above group names in dropdowns)
   - Other purposes
-- Images are stored in the `uploads/` folder
+- Hero slideshow automatically cycles through images every 5 seconds
+- Images are stored in the `uploads/` folder (or persistent volume on Railway)
 - Maximum file size: 10MB
 - Supported formats: JPEG, PNG, GIF, WebP
 
@@ -76,11 +77,16 @@ The BLW Ireland Zone Admin Portal provides comprehensive control over your websi
 All data is stored in JSON files in the `data/` directory:
 - `config.json` - Site configuration and admin password
 - `events.json` - Events calendar
+- `archived-events.json` - Past events (auto-archived)
 - `zone-data.json` - Zone structure and colleges
 - `stream-config.json` - Live stream configuration
+- `previous-streams.json` - Previous livestream videos
+- `stream-viewership.json` - Viewer registration and attendance data
 - `instagram-config.json` - Instagram feed settings
 
-**Important**: Keep these files backed up!
+**Important**: 
+- Keep these files backed up!
+- On Railway, use persistent volumes (see [RAILWAY_VOLUME_SETUP.md](RAILWAY_VOLUME_SETUP.md))
 
 ## Security Notes
 
@@ -109,6 +115,10 @@ All API endpoints require authentication (except `/api/config` and `/api/events`
 - `PUT /api/zone-data` - Update zone structure (requires auth)
 - `GET /api/stream-config` - Get stream configuration
 - `PUT /api/stream-config` - Update stream config (requires auth)
+- `GET /api/stream/viewership/:videoId?` - Get viewership stats (requires auth)
+- `GET /api/stream/viewership/:videoId/export` - Export stream CSV (requires auth)
+- `GET /api/stream/viewership/export/all` - Export all streams CSV (requires auth)
+- `POST /api/stream/view` - Track stream view (public)
 - `GET /api/instagram-config` - Get Instagram config
 - `PUT /api/instagram-config` - Update Instagram config (requires auth)
 - `POST /api/upload` - Upload image (requires auth)

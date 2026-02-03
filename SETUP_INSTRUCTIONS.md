@@ -76,18 +76,18 @@ Admin Server (Port 8080)
 
 ## Production Deployment
 
-### Option 1: Single Server (Recommended)
-Combine both servers into one Express app that serves both admin and frontend.
+This project uses a single Express server that serves both the frontend website and admin portal. For detailed deployment instructions, see **[DEPLOYMENT.md](DEPLOYMENT.md)**.
 
-### Option 2: Separate Servers
-- Deploy admin-server.js to a backend service
-- Deploy frontend files to a static hosting service
-- Update API_BASE in frontend-api.js to point to your admin server
+**Recommended hosting:**
+- **Railway** - Easiest setup, supports persistent volumes (see [RAILWAY_VOLUME_SETUP.md](RAILWAY_VOLUME_SETUP.md))
+- **Render** - Good free tier with persistent storage
+- **DigitalOcean App Platform** - Professional hosting
 
-### Option 3: Serverless
-- Convert admin API to serverless functions (Vercel/Netlify)
-- Deploy frontend to static hosting
-- Use a database instead of JSON files
+**Important for production:**
+- Set up persistent volumes for data storage (Railway volumes recommended)
+- Change default admin password
+- Enable HTTPS (automatic on most platforms)
+- Set secure session cookies
 
 ## Important Files
 
@@ -139,11 +139,16 @@ Combine both servers into one Express app that serves both admin and frontend.
 
 ## Next Steps
 
-1. Customize the admin portal styling
-2. Add more features as needed
-3. Set up automated backups
-4. Deploy to production
-5. Monitor and maintain
+1. **Configure Content** - Add events, images, and configure livestream
+2. **Set Up Persistent Storage** - See [RAILWAY_VOLUME_SETUP.md](RAILWAY_VOLUME_SETUP.md) for Railway
+3. **Deploy to Production** - See [DEPLOYMENT.md](DEPLOYMENT.md) for hosting options
+4. **Change Admin Password** - Do this immediately after first login
+5. **Set Up Backups** - Regular backups of `data/` and `uploads/` directories
 
-For detailed feature documentation, see `ADMIN_PORTAL.md`.
+## Documentation
+
+- **[ADMIN_PORTAL.md](ADMIN_PORTAL.md)** - Complete admin portal feature guide
+- **[DEPLOYMENT.md](DEPLOYMENT.md)** - Production deployment guide
+- **[EMBEDDED_STREAMING_GUIDE.md](EMBEDDED_STREAMING_GUIDE.md)** - YouTube streaming setup
+- **[RAILWAY_VOLUME_SETUP.md](RAILWAY_VOLUME_SETUP.md)** - Persistent storage setup
 

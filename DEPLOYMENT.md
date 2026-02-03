@@ -6,10 +6,12 @@ This guide provides recommendations for hosting your BLW Ireland Zone website wi
 
 Your website needs:
 - **Node.js runtime** (for admin-server.js)
-- **Persistent file storage** (for `data/` and `uploads/` directories)
+- **Persistent file storage** (for `data/` and `uploads/` directories) - **Critical!**
 - **HTTPS/SSL support** (for security)
-- **Custom domain support**
+- **Custom domain support** (optional)
 - **24/7 uptime** (for admin portal and API)
+
+**⚠️ Important:** Without persistent storage, all data (events, images, viewership records) will be lost on redeployment. See [RAILWAY_VOLUME_SETUP.md](RAILWAY_VOLUME_SETUP.md) for setup.
 
 ## Recommended Hosting Options
 

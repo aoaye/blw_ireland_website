@@ -149,8 +149,7 @@ async function initializeData() {
                 adminPassword: await bcrypt.hash('admin', 10),
                 siteTitle: 'BLW Ireland Zone',
                 tagline: 'Making An Impact; In universities across the nation and beyond...',
-                heroBackgrounds: [],
-                instagramAutoFetch: true
+                heroBackgrounds: []
             };
             await fs.writeFile(CONFIG_FILE, JSON.stringify(defaultConfig, null, 2));
         }
@@ -186,10 +185,10 @@ async function initializeData() {
             await fs.access(STREAM_CONFIG_FILE);
         } catch {
             await fs.writeFile(STREAM_CONFIG_FILE, JSON.stringify({
-                rtmpServerUrl: '',
-                rtmpStreamKey: '',
-                streamType: 'hls',
-                isLive: false
+                streamType: 'embedded',
+                embeddedStreamUrl: '',
+                platform: 'youtube',
+                previousStreams: []
             }, null, 2));
         }
         
@@ -198,10 +197,8 @@ async function initializeData() {
             await fs.access(INSTAGRAM_CONFIG_FILE);
         } catch {
             await fs.writeFile(INSTAGRAM_CONFIG_FILE, JSON.stringify({
-                autoFetch: true,
-                manualPostUrl: '',
-                accessToken: '',
-                userId: ''
+                autoFetch: false, // Manual URL mode only
+                manualPostUrl: ''
             }, null, 2));
         }
         
