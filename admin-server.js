@@ -267,6 +267,33 @@ async function writeJSON(filePath, data) {
     await fs.writeFile(filePath, JSON.stringify(data, null, 2));
 }
 
+/** readJSON returns null on missing/invalid files — normalize to a plain object map */
+function normalizeViewershipMap(raw) {
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
+        return {};
+    }
+    return raw;
+}
+
+function ensureStreamShape(streamData) {
+    if (!streamData || typeof streamData !== 'object') {
+        return;
+    }
+    if (!streamData.sessions || typeof streamData.sessions !== 'object') {
+        streamData.sessions = {};
+    }
+    if (!Array.isArray(streamData.uniqueSessions)) {
+        streamData.uniqueSessions = [];
+    }
+}
+
+function countUniqueViewers(streamData) {
+    if (!streamData || typeof streamData !== 'object') {
+        return 0;
+    }
+    return Array.isArray(streamData.uniqueSessions) ? streamData.uniqueSessions.length : 0;
+}
+
 // ==================== AUTHENTICATION ROUTES ====================
 
 app.post('/api/admin/login', async (req, res) => {
@@ -540,6 +567,38 @@ app.put('/api/stream-config', requireAuth, async (req, res) => {
     }
 });
 
+// ==================== PREVIOUS STREAMS (Live TV archive list) ====================
+
+app.get('/api/previous-streams', async (req, res) => {
+    try {
+        const data = await readJSON(PREVIOUS_STREAMS_FILE);
+        if (!data || typeof data !== 'object' || !Array.isArray(data.videos)) {
+            return res.json({ videos: [] });
+        }
+        res.json(data);
+    } catch (error) {
+        console.error('Error loading previous streams:', error);
+        res.status(500).json({ error: 'Failed to load previous streams' });
+    }
+});
+
+app.put('/api/previous-streams', requireAuth, async (req, res) => {
+    try {
+        if (req.session) {
+            req.session.touch();
+        }
+        const body = req.body;
+        if (!body || typeof body !== 'object' || !Array.isArray(body.videos)) {
+            return res.status(400).json({ error: 'Invalid body: expected { videos: [...] }' });
+        }
+        await writeJSON(PREVIOUS_STREAMS_FILE, { videos: body.videos });
+        res.json({ success: true });
+    } catch (error) {
+        console.error('Error saving previous streams:', error);
+        res.status(500).json({ error: 'Failed to save previous streams' });
+    }
+});
+
 // ==================== STREAM VIEWERSHIP ROUTES ====================
 
 // Track a stream view
@@ -551,14 +610,8 @@ app.post('/api/stream/view', async (req, res) => {
             return res.status(400).json({ error: 'videoId and sessionId are required' });
         }
         
-        // Load existing viewership data
-        let viewership = {};
-        
-        try {
-            viewership = await readJSON(VIEWERSHIP_FILE);
-        } catch {
-            viewership = {};
-        }
+        // Load existing viewership data (readJSON returns null if file missing/invalid)
+        let viewership = normalizeViewershipMap(await readJSON(VIEWERSHIP_FILE));
         
         // Initialize stream entry if it doesn't exist
         if (!viewership[videoId]) {
@@ -573,6 +626,7 @@ app.post('/api/stream/view', async (req, res) => {
         
         // Check if this session already viewed (to avoid duplicate counts on reload)
         const streamData = viewership[videoId];
+        ensureStreamShape(streamData);
         
         if (!streamData.sessions[sessionId]) {
             // New session - add to unique count
@@ -616,7 +670,7 @@ app.post('/api/stream/view', async (req, res) => {
         
         res.json({ 
             success: true, 
-            uniqueViewers: streamData.uniqueSessions.length,
+            uniqueViewers: countUniqueViewers(streamData),
             isNewViewer: streamData.sessions[sessionId].viewCount === 1
         });
     } catch (error) {
@@ -628,21 +682,16 @@ app.post('/api/stream/view', async (req, res) => {
 // Get viewership stats
 app.get('/api/stream/viewership/:videoId?', async (req, res) => {
     try {
-        let viewership = {};
-        
-        try {
-            viewership = await readJSON(VIEWERSHIP_FILE);
-        } catch {
-            viewership = {};
-        }
+        const viewership = normalizeViewershipMap(await readJSON(VIEWERSHIP_FILE));
         
         const videoId = req.params.videoId;
         if (videoId) {
             const streamData = viewership[videoId];
             if (streamData) {
+                ensureStreamShape(streamData);
                 res.json({
                     ...streamData,
-                    uniqueViewerCount: streamData.uniqueSessions.length
+                    uniqueViewerCount: countUniqueViewers(streamData)
                 });
             } else {
                 res.json({ 
@@ -657,9 +706,11 @@ app.get('/api/stream/viewership/:videoId?', async (req, res) => {
             // Return all viewership data with counts
             const dataWithCounts = {};
             Object.keys(viewership).forEach(key => {
+                const entry = viewership[key];
+                ensureStreamShape(entry);
                 dataWithCounts[key] = {
-                    ...viewership[key],
-                    uniqueViewerCount: viewership[key].uniqueSessions.length
+                    ...entry,
+                    uniqueViewerCount: countUniqueViewers(entry)
                 };
             });
             res.json(dataWithCounts);
@@ -727,13 +778,7 @@ function convertViewershipToCSV(streamData, videoId, includeStreamColumn = false
 // Export viewership data for a specific stream as CSV
 app.get('/api/stream/viewership/:videoId/export', requireAuth, async (req, res) => {
     try {
-        let viewership = {};
-        
-        try {
-            viewership = await readJSON(VIEWERSHIP_FILE);
-        } catch {
-            viewership = {};
-        }
+        const viewership = normalizeViewershipMap(await readJSON(VIEWERSHIP_FILE));
         
         const videoId = req.params.videoId;
         const streamData = viewership[videoId];
@@ -742,6 +787,7 @@ app.get('/api/stream/viewership/:videoId/export', requireAuth, async (req, res) 
             return res.status(404).json({ error: 'Stream not found' });
         }
         
+        ensureStreamShape(streamData);
         const csv = convertViewershipToCSV(streamData, videoId, false);
         
         // Set headers for CSV download
@@ -757,13 +803,7 @@ app.get('/api/stream/viewership/:videoId/export', requireAuth, async (req, res) 
 // Export all viewership data as CSV
 app.get('/api/stream/viewership/export/all', requireAuth, async (req, res) => {
     try {
-        let viewership = {};
-        
-        try {
-            viewership = await readJSON(VIEWERSHIP_FILE);
-        } catch {
-            viewership = {};
-        }
+        const viewership = normalizeViewershipMap(await readJSON(VIEWERSHIP_FILE));
         
         if (Object.keys(viewership).length === 0) {
             return res.status(404).json({ error: 'No viewership data available' });
@@ -777,6 +817,7 @@ app.get('/api/stream/viewership/export/all', requireAuth, async (req, res) => {
         // Add data from each stream
         Object.keys(viewership).forEach(videoId => {
             const streamData = viewership[videoId];
+            ensureStreamShape(streamData);
             const sessions = streamData.sessions || {};
             const registeredSessions = Object.values(sessions).filter(s => s.firstName && s.lastName);
             

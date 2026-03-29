@@ -276,11 +276,19 @@ function extractVideoId(url) {
 // Load previous streams
 async function loadPreviousStreams() {
     try {
-        const data = await fetch(`${API_BASE}/previous-streams`).then(r => r.json());
-        previousStreamsData = data || { videos: [] };
+        const response = await fetch(`${API_BASE}/previous-streams`);
+        if (!response.ok) {
+            previousStreamsData = { videos: [] };
+            renderPreviousStreams();
+            return;
+        }
+        const data = await response.json();
+        previousStreamsData = data && Array.isArray(data.videos) ? data : { videos: [] };
         renderPreviousStreams();
     } catch (error) {
         console.error('Failed to load previous streams:', error);
+        previousStreamsData = { videos: [] };
+        renderPreviousStreams();
     }
 }
 
@@ -1558,10 +1566,20 @@ async function loadConfig() {
 async function loadViewershipStats() {
     try {
         const response = await fetch(`${API_BASE}/stream/viewership`);
-        const viewership = await response.json();
-        
         const container = document.getElementById('viewership-stats');
         if (!container) return;
+
+        if (!response.ok) {
+            const err = await response.json().catch(() => ({}));
+            container.innerHTML = `<p style="color: var(--danger);">Could not load viewership: ${err.error || response.statusText || response.status}</p>`;
+            return;
+        }
+
+        const viewership = await response.json();
+        if (viewership && typeof viewership.error === 'string' && Object.keys(viewership).length === 1) {
+            container.innerHTML = `<p style="color: var(--danger);">Could not load viewership: ${viewership.error}</p>`;
+            return;
+        }
         
         const streamConfig = await fetch(`${API_BASE}/stream-config`).then(r => r.json());
         const currentVideoId = extractVideoId(streamConfig.embeddedStreamUrl || '');
