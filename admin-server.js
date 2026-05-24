@@ -79,10 +79,6 @@ const UPLOADS_DIR = USE_VOLUME ? path.join(VOLUME_BASE, 'uploads') : 'uploads';
 // Log the paths being used (helpful for debugging)
 console.log('Storage paths:', { DATA_DIR, UPLOADS_DIR, USE_VOLUME, VOLUME_BASE });
 
-app.use(express.static('.')); // Serve static files
-app.use('/admin', express.static('admin')); // Serve admin static files
-app.use('/uploads', express.static(UPLOADS_DIR)); // Serve uploaded images
-
 // File upload configuration
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
@@ -267,6 +263,16 @@ async function writeJSON(filePath, data) {
     await fs.writeFile(filePath, JSON.stringify(data, null, 2));
 }
 
+/** Atomic write — prevents partial/corrupt JSON when concurrent requests overlap */
+async function writeJSONAtomic(filePath, data) {
+    const dir = path.dirname(filePath);
+    await fs.mkdir(dir, { recursive: true });
+    const tmpPath = `${filePath}.${process.pid}.${Date.now()}.tmp`;
+    const content = JSON.stringify(data, null, 2);
+    await fs.writeFile(tmpPath, content, 'utf8');
+    await fs.rename(tmpPath, filePath);
+}
+
 /** readJSON returns null on missing/invalid files — normalize to a plain object map */
 function normalizeViewershipMap(raw) {
     if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
@@ -292,6 +298,50 @@ function countUniqueViewers(streamData) {
         return 0;
     }
     return Array.isArray(streamData.uniqueSessions) ? streamData.uniqueSessions.length : 0;
+}
+
+function countRegisteredViewers(streamData) {
+    if (!streamData || typeof streamData !== 'object') {
+        return 0;
+    }
+    const sessions = streamData.sessions || {};
+    return Object.values(sessions).filter(s => s.firstName && s.lastName).length;
+}
+
+function enrichStreamStats(streamData) {
+    ensureStreamShape(streamData);
+    return {
+        ...streamData,
+        uniqueViewerCount: countUniqueViewers(streamData),
+        registeredViewerCount: countRegisteredViewers(streamData)
+    };
+}
+
+// Serialize viewership read-modify-write to prevent lost updates under concurrent POSTs
+let viewershipWriteQueue = Promise.resolve();
+
+function runViewershipLocked(task) {
+    const result = viewershipWriteQueue.then(() => task(), () => task());
+    viewershipWriteQueue = result.then(() => undefined, () => undefined);
+    return result;
+}
+
+async function readViewershipFile() {
+    let raw = await readJSON(VIEWERSHIP_FILE);
+    if (raw === null) {
+        const backup = await readJSON(`${VIEWERSHIP_FILE}.bak`);
+        if (backup !== null) {
+            console.warn('Viewership file missing or corrupt — recovered from backup');
+            raw = backup;
+        }
+    }
+    return normalizeViewershipMap(raw);
+}
+
+async function persistViewership(viewership) {
+    await writeJSONAtomic(VIEWERSHIP_FILE, viewership);
+    // Best-effort backup for recovery if the main file is corrupted later
+    writeJSONAtomic(`${VIEWERSHIP_FILE}.bak`, viewership).catch(() => {});
 }
 
 // ==================== AUTHENTICATION ROUTES ====================
@@ -609,109 +659,146 @@ app.post('/api/stream/view', async (req, res) => {
         if (!videoId || !sessionId) {
             return res.status(400).json({ error: 'videoId and sessionId are required' });
         }
-        
-        // Load existing viewership data (readJSON returns null if file missing/invalid)
-        let viewership = normalizeViewershipMap(await readJSON(VIEWERSHIP_FILE));
-        
-        // Initialize stream entry if it doesn't exist
-        if (!viewership[videoId]) {
-            viewership[videoId] = {
-                videoId,
-                startTime: timestamp,
-                sessions: {},
-                uniqueSessions: [],
-                totalViews: 0
-            };
-        }
-        
-        // Check if this session already viewed (to avoid duplicate counts on reload)
-        const streamData = viewership[videoId];
-        ensureStreamShape(streamData);
-        
-        if (!streamData.sessions[sessionId]) {
-            // New session - add to unique count
-            if (!streamData.uniqueSessions.includes(sessionId)) {
-                streamData.uniqueSessions.push(sessionId);
-            }
-            streamData.totalViews++;
+
+        const result = await runViewershipLocked(async () => {
+            let viewership = await readViewershipFile();
             
-            // Store session details
-            streamData.sessions[sessionId] = {
-                sessionId,
-                firstName: firstName || null,
-                lastName: lastName || null,
-                viewerName: firstName && lastName ? `${firstName} ${lastName}` : null,
-                viewerEmail: viewerEmail || null,
-                viewerPhone: viewerPhone || null,
-                firstViewTime: timestamp,
-                lastViewTime: timestamp,
-                viewCount: 1
-            };
-        } else {
-            // Existing session - just update last view time
-            streamData.sessions[sessionId].lastViewTime = timestamp;
-            streamData.sessions[sessionId].viewCount++;
+            if (!viewership[videoId]) {
+                viewership[videoId] = {
+                    videoId,
+                    startTime: timestamp || Date.now(),
+                    sessions: {},
+                    uniqueSessions: [],
+                    totalViews: 0
+                };
+            }
             
-            // Update name if provided (in case user registered after first view)
-            if (firstName && lastName) {
-                streamData.sessions[sessionId].firstName = firstName;
-                streamData.sessions[sessionId].lastName = lastName;
-                streamData.sessions[sessionId].viewerName = `${firstName} ${lastName}`;
+            const streamData = viewership[videoId];
+            ensureStreamShape(streamData);
+            
+            if (!streamData.sessions[sessionId]) {
+                if (!streamData.uniqueSessions.includes(sessionId)) {
+                    streamData.uniqueSessions.push(sessionId);
+                }
+                streamData.totalViews++;
+                
+                streamData.sessions[sessionId] = {
+                    sessionId,
+                    firstName: firstName || null,
+                    lastName: lastName || null,
+                    viewerName: firstName && lastName ? `${firstName} ${lastName}` : null,
+                    viewerEmail: viewerEmail || null,
+                    viewerPhone: viewerPhone || null,
+                    firstViewTime: timestamp || Date.now(),
+                    lastViewTime: timestamp || Date.now(),
+                    viewCount: 1
+                };
+            } else {
+                streamData.sessions[sessionId].lastViewTime = timestamp || Date.now();
+                streamData.sessions[sessionId].viewCount++;
+                
+                if (firstName && lastName) {
+                    streamData.sessions[sessionId].firstName = firstName;
+                    streamData.sessions[sessionId].lastName = lastName;
+                    streamData.sessions[sessionId].viewerName = `${firstName} ${lastName}`;
+                }
+                if (viewerEmail) {
+                    streamData.sessions[sessionId].viewerEmail = viewerEmail;
+                }
+                if (viewerPhone) {
+                    streamData.sessions[sessionId].viewerPhone = viewerPhone;
+                }
             }
-            if (viewerEmail) {
-                streamData.sessions[sessionId].viewerEmail = viewerEmail;
-            }
-            if (viewerPhone) {
-                streamData.sessions[sessionId].viewerPhone = viewerPhone;
-            }
-        }
-        
-        await writeJSON(VIEWERSHIP_FILE, viewership);
-        
-        res.json({ 
-            success: true, 
-            uniqueViewers: countUniqueViewers(streamData),
-            isNewViewer: streamData.sessions[sessionId].viewCount === 1
+            
+            await persistViewership(viewership);
+            
+            return {
+                uniqueViewers: countUniqueViewers(streamData),
+                registeredViewers: countRegisteredViewers(streamData),
+                isNewViewer: streamData.sessions[sessionId].viewCount === 1
+            };
         });
+        
+        res.json({ success: true, ...result });
     } catch (error) {
         console.error('Error tracking view:', error);
         res.status(500).json({ error: 'Failed to track view' });
     }
 });
 
+// Export all viewership data as CSV (registered before /:videoId so "export" is not treated as an id)
+app.get('/api/stream/viewership/export/all', requireAuth, async (req, res) => {
+    try {
+        const viewership = await readViewershipFile();
+        
+        if (Object.keys(viewership).length === 0) {
+            return res.status(404).json({ error: 'No viewership data available' });
+        }
+        
+        const allRows = [];
+        const headers = ['Stream Video ID', 'First Name', 'Last Name', 'Email', 'Phone', 'Join Date', 'Join Time', 'View Count'];
+        allRows.push(headers.join(','));
+        
+        Object.keys(viewership).forEach(videoId => {
+            const streamData = viewership[videoId];
+            ensureStreamShape(streamData);
+            const sessions = streamData.sessions || {};
+            const registeredSessions = Object.values(sessions).filter(s => s.firstName && s.lastName);
+            
+            registeredSessions.forEach(session => {
+                const joinDate = new Date(session.firstViewTime);
+                const dateStr = joinDate.toLocaleDateString();
+                const timeStr = joinDate.toLocaleTimeString();
+                
+                const row = [
+                    escapeCSVField(videoId),
+                    escapeCSVField(session.firstName),
+                    escapeCSVField(session.lastName),
+                    escapeCSVField(session.viewerEmail || ''),
+                    escapeCSVField(session.viewerPhone || ''),
+                    escapeCSVField(dateStr),
+                    escapeCSVField(timeStr),
+                    escapeCSVField(session.viewCount || 1)
+                ];
+                allRows.push(row.join(','));
+            });
+        });
+        
+        const csv = allRows.join('\n');
+        
+        res.setHeader('Content-Type', 'text/csv');
+        res.setHeader('Content-Disposition', `attachment; filename="all-streams-attendees-${Date.now()}.csv"`);
+        res.send(csv);
+    } catch (error) {
+        console.error('Error exporting all viewership CSV:', error);
+        res.status(500).json({ error: 'Failed to export viewership data' });
+    }
+});
+
 // Get viewership stats
 app.get('/api/stream/viewership/:videoId?', async (req, res) => {
     try {
-        const viewership = normalizeViewershipMap(await readJSON(VIEWERSHIP_FILE));
+        const viewership = await readViewershipFile();
         
         const videoId = req.params.videoId;
         if (videoId) {
             const streamData = viewership[videoId];
             if (streamData) {
-                ensureStreamShape(streamData);
-                res.json({
-                    ...streamData,
-                    uniqueViewerCount: countUniqueViewers(streamData)
-                });
+                res.json(enrichStreamStats(streamData));
             } else {
                 res.json({ 
                     videoId, 
-                    uniqueViewerCount: 0, 
+                    uniqueViewerCount: 0,
+                    registeredViewerCount: 0,
                     sessions: {},
                     uniqueSessions: [],
                     totalViews: 0
                 });
             }
         } else {
-            // Return all viewership data with counts
             const dataWithCounts = {};
             Object.keys(viewership).forEach(key => {
-                const entry = viewership[key];
-                ensureStreamShape(entry);
-                dataWithCounts[key] = {
-                    ...entry,
-                    uniqueViewerCount: countUniqueViewers(entry)
-                };
+                dataWithCounts[key] = enrichStreamStats(viewership[key]);
             });
             res.json(dataWithCounts);
         }
@@ -778,7 +865,7 @@ function convertViewershipToCSV(streamData, videoId, includeStreamColumn = false
 // Export viewership data for a specific stream as CSV
 app.get('/api/stream/viewership/:videoId/export', requireAuth, async (req, res) => {
     try {
-        const viewership = normalizeViewershipMap(await readJSON(VIEWERSHIP_FILE));
+        const viewership = await readViewershipFile();
         
         const videoId = req.params.videoId;
         const streamData = viewership[videoId];
@@ -796,58 +883,6 @@ app.get('/api/stream/viewership/:videoId/export', requireAuth, async (req, res) 
         res.send(csv);
     } catch (error) {
         console.error('Error exporting viewership CSV:', error);
-        res.status(500).json({ error: 'Failed to export viewership data' });
-    }
-});
-
-// Export all viewership data as CSV
-app.get('/api/stream/viewership/export/all', requireAuth, async (req, res) => {
-    try {
-        const viewership = normalizeViewershipMap(await readJSON(VIEWERSHIP_FILE));
-        
-        if (Object.keys(viewership).length === 0) {
-            return res.status(404).json({ error: 'No viewership data available' });
-        }
-        
-        // Build CSV with all streams
-        const allRows = [];
-        const headers = ['Stream Video ID', 'First Name', 'Last Name', 'Email', 'Phone', 'Join Date', 'Join Time', 'View Count'];
-        allRows.push(headers.join(','));
-        
-        // Add data from each stream
-        Object.keys(viewership).forEach(videoId => {
-            const streamData = viewership[videoId];
-            ensureStreamShape(streamData);
-            const sessions = streamData.sessions || {};
-            const registeredSessions = Object.values(sessions).filter(s => s.firstName && s.lastName);
-            
-            registeredSessions.forEach(session => {
-                const joinDate = new Date(session.firstViewTime);
-                const dateStr = joinDate.toLocaleDateString();
-                const timeStr = joinDate.toLocaleTimeString();
-                
-                const row = [
-                    escapeCSVField(videoId),
-                    escapeCSVField(session.firstName),
-                    escapeCSVField(session.lastName),
-                    escapeCSVField(session.viewerEmail || ''),
-                    escapeCSVField(session.viewerPhone || ''),
-                    escapeCSVField(dateStr),
-                    escapeCSVField(timeStr),
-                    escapeCSVField(session.viewCount || 1)
-                ];
-                allRows.push(row.join(','));
-            });
-        });
-        
-        const csv = allRows.join('\n');
-        
-        // Set headers for CSV download
-        res.setHeader('Content-Type', 'text/csv');
-        res.setHeader('Content-Disposition', `attachment; filename="all-streams-attendees-${Date.now()}.csv"`);
-        res.send(csv);
-    } catch (error) {
-        console.error('Error exporting all viewership CSV:', error);
         res.status(500).json({ error: 'Failed to export viewership data' });
     }
 });
@@ -999,6 +1034,11 @@ app.delete('/api/upload/:filename', requireAuth, async (req, res) => {
     }
 });
 
+// Static files — registered after API routes so /api/* is never intercepted
+app.use('/uploads', express.static(UPLOADS_DIR));
+app.use('/admin', express.static('admin'));
+app.use(express.static('.'));
+
 // ==================== FAVICON ROUTE ====================
 
 app.get('/favicon.ico', (req, res) => {
@@ -1033,4 +1073,11 @@ if (process.env.NODE_ENV !== 'test' && require.main === module) {
 
 // Export app for testing
 module.exports = app;
+module.exports.initializeData = initializeData;
+module.exports.viewershipHelpers = {
+    readViewershipFile,
+    persistViewership,
+    runViewershipLocked,
+    VIEWERSHIP_FILE,
+};
 

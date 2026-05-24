@@ -272,6 +272,9 @@ async function trackStreamView(videoId, session) {
             const data = await response.json();
             console.log('View tracked:', data);
             updateViewerCount(videoId);
+        } else {
+            const err = await response.json().catch(() => ({}));
+            console.error('View tracking failed:', response.status, err.error || err);
         }
     } catch (error) {
         console.error('Error tracking view:', error);
@@ -288,9 +291,8 @@ async function updateViewerCount(videoId) {
         const response = await fetch(apiUrl);
         if (response.ok) {
             const data = await response.json();
-            const count = data.uniqueViewerCount || 0;
+            const registered = data.registeredViewerCount ?? 0;
             
-            // Display viewer count on page
             let viewerCountEl = document.getElementById('viewer-count');
             if (!viewerCountEl) {
                 viewerCountEl = document.createElement('div');
@@ -302,7 +304,7 @@ async function updateViewerCount(videoId) {
                     videoWrapper.appendChild(viewerCountEl);
                 }
             }
-            viewerCountEl.textContent = `👁️ ${count} ${count === 1 ? 'viewer' : 'viewers'}`;
+            viewerCountEl.textContent = `👥 ${registered} registered ${registered === 1 ? 'viewer' : 'viewers'}`;
         }
     } catch (error) {
         console.error('Error loading viewer count:', error);
@@ -373,6 +375,8 @@ function extractYouTubeVideoId(streamUrl) {
         videoId = streamUrl.split('v=')[1].split('&')[0];
     } else if (streamUrl.includes('youtu.be/')) {
         videoId = streamUrl.split('youtu.be/')[1].split('?')[0];
+    } else if (streamUrl.includes('youtube.com/live/')) {
+        videoId = streamUrl.split('live/')[1].split('?')[0].split('/')[0];
     } else if (streamUrl.includes('youtube.com/embed/')) {
         videoId = streamUrl.split('embed/')[1].split('?')[0];
     } else if (streamUrl.length === 11 && /^[a-zA-Z0-9_-]+$/.test(streamUrl)) {
@@ -402,12 +406,8 @@ function embedYouTubeStream(streamUrl, container, placeholder) {
     // Show registration popup if stream is configured and active (after a short delay)
     setTimeout(() => {
         showRegistrationPopup(session, videoId);
-    }, 1000); // Show after 1 second
+    }, 1000);
     
-    // Track the view (only if user is registered or will register)
-    // We'll track after registration is complete
-    
-    // Hide placeholder
     placeholder.style.display = 'none';
     
     // Create or update iframe
@@ -427,23 +427,16 @@ function embedYouTubeStream(streamUrl, container, placeholder) {
     // Also embed YouTube live chat
     embedYouTubeChat(videoId);
     
-    // If user is already registered, track the view immediately
-    if (session.firstName && session.lastName) {
-        trackStreamView(videoId, session);
-    }
+    // Track attendance immediately (anonymous until registration completes)
+    trackStreamView(videoId, session);
+    updateViewerCount(videoId);
     
-    // Update viewer count periodically
+    // Refresh counts and keep sessions active while watching
     setInterval(() => {
         const currentSession = getSession();
-        // Only update if user is registered
-        if (currentSession.firstName && currentSession.lastName) {
-            updateViewerCount(videoId);
-            // Re-track if session is still valid (to update last activity)
-            if (currentSession.sessionId === session.sessionId) {
-                trackStreamView(videoId, currentSession);
-            }
-        }
-    }, 30000); // Every 30 seconds
+        updateViewerCount(videoId);
+        trackStreamView(videoId, currentSession);
+    }, 30000);
 }
 
 // Embed YouTube live chat

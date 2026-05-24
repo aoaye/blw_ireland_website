@@ -265,6 +265,8 @@ function extractVideoId(url) {
         videoId = url.split('v=')[1].split('&')[0];
     } else if (url.includes('youtu.be/')) {
         videoId = url.split('youtu.be/')[1].split('?')[0];
+    } else if (url.includes('youtube.com/live/')) {
+        videoId = url.split('live/')[1].split('?')[0].split('/')[0];
     } else if (url.includes('youtube.com/embed/')) {
         videoId = url.split('embed/')[1].split('?')[0];
     } else if (url.length === 11 && /^[a-zA-Z0-9_-]+$/.test(url)) {
@@ -1563,6 +1565,34 @@ async function loadConfig() {
 }
 
 // Load viewership statistics
+function formatStreamDate(timestamp) {
+    if (!timestamp) return 'Unknown';
+    const d = new Date(timestamp);
+    return Number.isNaN(d.getTime()) ? 'Unknown' : d.toLocaleString();
+}
+
+function getRegisteredCount(stats) {
+    if (stats && stats.registeredViewerCount != null) {
+        return stats.registeredViewerCount;
+    }
+    return Object.values((stats && stats.sessions) || {})
+        .filter(s => s.firstName && s.lastName).length;
+}
+
+let viewershipPollTimer = null;
+
+function startViewershipPolling() {
+    stopViewershipPolling();
+    viewershipPollTimer = setInterval(loadViewershipStats, 30000);
+}
+
+function stopViewershipPolling() {
+    if (viewershipPollTimer) {
+        clearInterval(viewershipPollTimer);
+        viewershipPollTimer = null;
+    }
+}
+
 async function loadViewershipStats() {
     try {
         const response = await fetch(`${API_BASE}/stream/viewership`);
@@ -1592,10 +1622,7 @@ async function loadViewershipStats() {
         // Count total registered attendees across all streams
         let totalRegistered = 0;
         Object.keys(viewership).forEach(videoId => {
-            const stats = viewership[videoId];
-            const registeredCount = Object.values(stats.sessions || {})
-                .filter(s => s.firstName && s.lastName).length;
-            totalRegistered += registeredCount;
+            totalRegistered += getRegisteredCount(viewership[videoId]);
         });
         
         let html = `
@@ -1612,19 +1639,18 @@ async function loadViewershipStats() {
         // Show current stream first if active
         if (currentVideoId && viewership[currentVideoId]) {
             const stats = viewership[currentVideoId];
-            const registeredCount = Object.values(stats.sessions || {})
-                .filter(s => s.firstName && s.lastName).length;
+            const registeredCount = getRegisteredCount(stats);
             
             html += `
                 <div class="viewership-item" style="border-left: 4px solid var(--success); padding: 1rem; margin-bottom: 1rem; background: var(--light-bg); border-radius: 5px;">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
                         <h4 style="margin: 0; color: var(--primary);">Current Stream</h4>
                         <span style="background: var(--success); color: white; padding: 0.4rem 0.8rem; border-radius: 20px; font-size: 0.85rem; font-weight: 600;">
-                            ${stats.uniqueViewerCount || 0} unique viewers
+                            ${registeredCount} registered
                         </span>
                     </div>
                     <p style="color: #666; font-size: 0.9em; margin: 0.25rem 0;">Video ID: ${currentVideoId}</p>
-                    <p style="color: #666; font-size: 0.9em; margin: 0.25rem 0;">Started: ${new Date(stats.startTime).toLocaleString()}</p>
+                    <p style="color: #666; font-size: 0.9em; margin: 0.25rem 0;">Started: ${formatStreamDate(stats.startTime)}</p>
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 0.5rem;">
                         <p style="color: var(--success); font-weight: 600; margin: 0;">
                             ${registeredCount} registered viewers
@@ -1654,23 +1680,24 @@ async function loadViewershipStats() {
             `;
         }
         
-        // Show all other streams
-        Object.keys(viewership).forEach(videoId => {
-            if (videoId === currentVideoId) return; // Already shown
-            
+        // Show past streams (newest first)
+        const pastVideoIds = Object.keys(viewership)
+            .filter(id => id !== currentVideoId)
+            .sort((a, b) => (viewership[b].startTime || 0) - (viewership[a].startTime || 0));
+
+        pastVideoIds.forEach(videoId => {
             const stats = viewership[videoId];
-            const registeredCount = Object.values(stats.sessions || {})
-                .filter(s => s.firstName && s.lastName).length;
+            const registeredCount = getRegisteredCount(stats);
             
             html += `
                 <div class="viewership-item" style="padding: 1rem; margin-bottom: 1rem; background: var(--light-bg); border-radius: 5px; border-left: 4px solid var(--secondary);">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
                         <h4 style="margin: 0; color: var(--primary);">Stream: ${videoId.substring(0, 11)}...</h4>
                         <span style="background: var(--secondary); color: white; padding: 0.4rem 0.8rem; border-radius: 20px; font-size: 0.85rem; font-weight: 600;">
-                            ${stats.uniqueViewerCount || 0} unique viewers
+                            ${registeredCount} registered
                         </span>
                     </div>
-                    <p style="color: #666; font-size: 0.9em; margin: 0.25rem 0;">Started: ${new Date(stats.startTime).toLocaleString()}</p>
+                    <p style="color: #666; font-size: 0.9em; margin: 0.25rem 0;">Started: ${formatStreamDate(stats.startTime)}</p>
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 0.5rem;">
                         <p style="color: var(--success); font-weight: 600; margin: 0;">
                             ${registeredCount} registered viewers
@@ -1685,7 +1712,8 @@ async function loadViewershipStats() {
                         <summary style="cursor: pointer; color: var(--secondary); font-weight: 600;">View Details</summary>
                         <div style="margin-top: 0.5rem; padding: 0.5rem; background: white; border-radius: 4px;">
                             <p style="margin: 0.25rem 0;"><strong>Total Views:</strong> ${stats.totalViews || 0}</p>
-                            <p style="margin: 0.25rem 0;"><strong>Unique Viewers:</strong> ${stats.uniqueViewerCount || 0}</p>
+                            <p style="margin: 0.25rem 0;"><strong>Registered:</strong> ${registeredCount}</p>
+                            <p style="margin: 0.25rem 0;"><strong>Unique Sessions:</strong> ${stats.uniqueViewerCount || 0}</p>
                             <div style="margin-top: 0.5rem; max-height: 200px; overflow-y: auto;">
                                 ${Object.values(stats.sessions || {})
                                     .filter(s => s.firstName && s.lastName)
@@ -1786,6 +1814,9 @@ document.querySelectorAll('.nav-link').forEach(link => {
         if (section === 'livestream') {
             loadStreamConfig();
             loadViewershipStats();
+            startViewershipPolling();
+        } else {
+            stopViewershipPolling();
         }
         if (section === 'instagram') loadInstagramConfig();
         if (section === 'settings') loadConfig();
