@@ -1981,7 +1981,7 @@ footer {
 .who-we-are-header h3 {
     font-size: 2.4rem;
     color: var(--text-color);
-    margin-top: 0.25rem;
+    margin-top: 0;
     margin-bottom: 1rem;
 }
 
@@ -2004,7 +2004,6 @@ footer {
 .loveworld-callout {
     background: var(--light-bg);
     border: 1px solid var(--border-color);
-    border-left: 5px solid var(--secondary-color);
     border-radius: 12px;
     padding: 1.75rem 2rem;
     margin: 2rem 0;
