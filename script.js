@@ -73,8 +73,8 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }, observerOptions);
 
-    // Observe feature cards and event cards
-    document.querySelectorAll('.feature-card, .event-card, .about-section').forEach(el => {
+    // Observe feature cards, event cards, partnership cards, and about sections
+    document.querySelectorAll('.feature-card, .event-card, .about-section, .rhapsody-spotlight, .partner-card, .pillar-card').forEach(el => {
         el.style.opacity = '0';
         el.style.transform = 'translateY(20px)';
         el.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
